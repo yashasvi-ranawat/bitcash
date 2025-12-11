@@ -303,10 +303,9 @@ class NetworkAPI:
         success = None
 
         for endpoint in get_sanitized_endpoints_for(network):
-            _ = [end[0] for end in ChaingraphAPI.get_default_endpoints(network)]
-            if endpoint in _ and network == "mainnet":
-                # Default chaingraph endpoints do not indicate failed broadcast
-                # no other testnet api
+            if isinstance(endpoint, ChaingraphAPI):
+                # ChaingraphAPI does not validate if the transaction fails
+                # so we skip it to avoid false negatives
                 continue
             try:
                 success = endpoint.broadcast_tx(tx_hex, timeout=DEFAULT_TIMEOUT)
@@ -316,7 +315,7 @@ class NetworkAPI:
             except cls.IGNORED_ERRORS:
                 pass
 
-        if not success:
+        if success is not None and not success:
             raise ConnectionError(
                 "Transaction broadcast failed, or Unspents were already used."
             )

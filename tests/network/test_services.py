@@ -141,6 +141,14 @@ class TestNetworkAPI:
             NetworkAPI.get_transaction(MAIN_TX, network="mainnet"), Transaction
         )
 
+    def test_skip_broadcast_on_chaingraph(self):
+        monkeypatch = MonkeyPatch()
+        monkeypatch.setattr(_services, "ENDPOINT_ENV_VARIABLES", {"CHAINGRAPH": ChaingraphAPI})
+        # should raise ConnectionError and check that its "All APIs are unreachable."
+        with pytest.raises(ConnectionError) as excinfo:
+            NetworkAPI.broadcast_tx("dummy_tx_hex", network="mainnet")
+            assert "All APIs are unreachable." in str(excinfo.value)
+
     # FIXME: enable this when testnet APIs are fixed/replaced
     # def test_get_transaction_testnet(self):
     #     assert isinstance(NetworkAPI.get_transaction_testnet(TEST_TX), Transaction) == True
