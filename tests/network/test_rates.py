@@ -1,6 +1,5 @@
 from time import sleep, time
 
-from _pytest.monkeypatch import MonkeyPatch
 import bitcash
 from bitcash.network import rates as _rates
 from bitcash.network.rates import (
@@ -8,7 +7,6 @@ from bitcash.network.rates import (
     bch_to_satoshi,
     currency_to_satoshi,
     currency_to_satoshi_cached,
-    EXCHANGE_RATES,
     mbch_to_satoshi,
     satoshi_to_currency,
     satoshi_to_currency_cached,
@@ -85,11 +83,8 @@ DUMMY_EXCHANGE_RATES = {"usd": _dummy_usd_to_satoshi}
 
 
 class TestRateCache:
-    def setup_method(self):
-        self.monkeypatch = MonkeyPatch()
-
-    def test_cache(self):
-        self.monkeypatch.setattr(_rates, "EXCHANGE_RATES", DUMMY_EXCHANGE_RATES)
+    def test_cache(self, monkeypatch):
+        monkeypatch.setattr(_rates, "EXCHANGE_RATES", DUMMY_EXCHANGE_RATES)
         start_time = time()
         currency_to_satoshi_cached(1, "usd")
         initial_time = time() - start_time
@@ -99,10 +94,9 @@ class TestRateCache:
         cached_time = time() - start_time
 
         assert initial_time > cached_time
-        self.monkeypatch.setattr(_rates, "EXCHANGE_RATES", EXCHANGE_RATES)
 
-    def test_expires(self):
-        self.monkeypatch.setattr(_rates, "EXCHANGE_RATES", DUMMY_EXCHANGE_RATES)
+    def test_expires(self, monkeypatch):
+        monkeypatch.setattr(_rates, "EXCHANGE_RATES", DUMMY_EXCHANGE_RATES)
         set_rate_cache_time(1.2)
         currency_to_satoshi_cached(1, "usd")
 
@@ -117,4 +111,3 @@ class TestRateCache:
         update_time = time() - start_time
 
         assert update_time > cached_time
-        self.monkeypatch.setattr(_rates, "EXCHANGE_RATES", EXCHANGE_RATES)

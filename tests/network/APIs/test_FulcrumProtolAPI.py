@@ -1,4 +1,4 @@
-from _pytest.monkeypatch import MonkeyPatch
+import pytest
 from decimal import Decimal
 
 from bitcash.network.APIs import FulcrumProtocolAPI as _fapi
@@ -23,10 +23,11 @@ class DummySendPayload:
 
 
 class TestFulcrumProtolAPI:
-    def setup_method(self):
-        self.monkeypatch = MonkeyPatch()
-        self.monkeypatch.setattr(_fapi, "handshake", dummy_handshake)
+    @pytest.fixture(autouse=True)
+    def setup(self, monkeypatch):
+        monkeypatch.setattr(_fapi, "handshake", dummy_handshake)
         self.api = FulcrumProtocolAPI("dummy.com:50002")
+        self.monkeypatch = monkeypatch
 
     def test_get_blockheight(self):
         return_result = {
