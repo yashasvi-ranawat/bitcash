@@ -104,7 +104,7 @@ class FulcrumProtocolAPI(BaseAPI):
     Documentation at: https://electrum-cash-protocol.readthedocs.io/en/latest/index.html
 
     :param network_endpoint: The url for the network endpoint
-    :param timeout: Socket timeout in seconds (default: 30.0)
+    :param timeout: Socket timeout in seconds.
     """
 
     # Default endpoints to use for this interface
