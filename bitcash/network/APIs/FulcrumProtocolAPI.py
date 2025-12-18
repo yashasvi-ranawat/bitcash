@@ -4,7 +4,7 @@ import socket
 import ssl
 from decimal import Decimal
 import typing
-from requests.exceptions import ConnectTimeout, ContentDecodingError, SSLError
+from requests.exceptions import ConnectTimeout, ContentDecodingError
 from typing import Any, Union
 
 from bitcash.exceptions import InvalidEndpointURLProvided
@@ -16,21 +16,26 @@ from bitcash.cashaddress import Address
 
 context = ssl.create_default_context()
 FULCRUM_PROTOCOL = "1.5.0"
+DEFAULT_SOCKET_TIMEOUT = 30.0
 
 BCH_TO_SAT_MULTIPLIER = 100000000
 # TODO: Refactor constant above into a 'constants.py' file
 
 
-def handshake(hostname: str, port: int) -> Union[socket.socket, ssl.SSLSocket]:
+def handshake(
+    hostname: str, port: int, timeout: float = DEFAULT_SOCKET_TIMEOUT
+) -> Union[socket.socket, ssl.SSLSocket]:
     """
     Perform handshake with the host and establish protocol
     """
     # make socket connection
     try:
-        sock = socket.create_connection((hostname, port))
+        sock = socket.create_connection((hostname, port), timeout=timeout)
         ssock = context.wrap_socket(sock, server_hostname=hostname)
+        ssock.settimeout(timeout)
     except ssl.SSLError:
-        ssock = socket.create_connection((hostname, port))
+        ssock = socket.create_connection((hostname, port), timeout=timeout)
+        ssock.settimeout(timeout)
 
     # send a server.version to establish protocol
     _ = send_json_rpc_payload(ssock, "server.version", ["Bitcash", FULCRUM_PROTOCOL])
@@ -82,10 +87,12 @@ def send_json_rpc_payload(
 def check_stale_sock(fn):
     @wraps(fn)
     def wrapper(self, *args, **kwargs):
+        if self.sock is None:
+            self.sock = handshake(self.hostname, self.port, self.timeout)
         try:
             result = fn(self, *args, **kwargs)
         except ConnectTimeout:
-            self.sock = handshake(self.hostname, self.port)
+            self.sock = handshake(self.hostname, self.port, self.timeout)
             result = fn(self, *args, **kwargs)
         return result
 
@@ -97,6 +104,7 @@ class FulcrumProtocolAPI(BaseAPI):
     Documentation at: https://electrum-cash-protocol.readthedocs.io/en/latest/index.html
 
     :param network_endpoint: The url for the network endpoint
+    :param timeout: Socket timeout in seconds (default: 30.0)
     """
 
     # Default endpoints to use for this interface
@@ -112,7 +120,7 @@ class FulcrumProtocolAPI(BaseAPI):
         "regtest": [],
     }
 
-    def __init__(self, network_endpoint: str):
+    def __init__(self, network_endpoint: str, timeout: float = DEFAULT_SOCKET_TIMEOUT):
         try:
             assert isinstance(network_endpoint, str)
         except AssertionError:
@@ -130,7 +138,8 @@ class FulcrumProtocolAPI(BaseAPI):
         self.hostname, port = network_endpoint.split(":")
         self.port = int(port)
 
-        self.sock = handshake(self.hostname, self.port)
+        self.timeout = timeout
+        self.sock = None
 
     @classmethod
     def get_default_endpoints(cls, network: str):
