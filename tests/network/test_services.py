@@ -3,7 +3,6 @@ import time
 
 import pytest
 import bitcash
-from _pytest.monkeypatch import MonkeyPatch
 from bitcash.exceptions import InvalidEndpointURLProvided
 from bitcash.network import services as _services
 from bitcash.network.APIs.FulcrumProtocolAPI import FulcrumProtocolAPI
@@ -102,16 +101,20 @@ def mock_get_endpoints_for(network):
     )
 
 
-def test_get_ordered_endpoints_for():
-    monkeypatch = MonkeyPatch()
+def test_get_ordered_endpoints_for(monkeypatch):
     monkeypatch.setattr(_services, "get_endpoints_for", mock_get_endpoints_for)
     endpoints = get_sanitized_endpoints_for("mock_mainnet")
     assert len(endpoints) == 4
     for endpoint in endpoints:
         assert endpoint.get_blockheight() == 4
-    # monkeypatch doesn't unset the attribute
-    # this fails the rest of the tests
-    monkeypatch.setattr(_services, "get_endpoints_for", get_endpoints_for)
+
+
+def mock_get_chaingraph_endpoints_for(network):
+    default_endpoints = ChaingraphAPI.get_default_endpoints(network)
+    endpoints = []
+    for endpoint in default_endpoints:
+        endpoints.append(ChaingraphAPI(*endpoint))
+    return endpoints
 
 
 class TestNetworkAPI:
@@ -140,6 +143,15 @@ class TestNetworkAPI:
         assert isinstance(
             NetworkAPI.get_transaction(MAIN_TX, network="mainnet"), Transaction
         )
+
+    def test_skip_broadcast_on_chaingraph(self, monkeypatch):
+        monkeypatch.setattr(
+            _services, "get_sanitized_endpoints_for", mock_get_chaingraph_endpoints_for
+        )
+        # should raise ConnectionError and check that its "All APIs are unreachable."
+        with pytest.raises(ConnectionError) as excinfo:
+            NetworkAPI.broadcast_tx("dummy_tx_hex", network="mainnet")
+            assert "All APIs are unreachable." in str(excinfo.value)
 
     # FIXME: enable this when testnet APIs are fixed/replaced
     # def test_get_transaction_testnet(self):

@@ -3,7 +3,6 @@ import json
 import pathlib
 
 
-from _pytest.monkeypatch import MonkeyPatch
 from bitcash import cashtoken as _cashtoken
 from bitcash.network.meta import Unspent
 from bitcash.cashtoken import (
@@ -81,7 +80,7 @@ def test_verify_cashtoken_output_data():
         )
 
 
-def test_cashtoken_prefix_script(test_vectors):
+def test_cashtoken_prefix_script(test_vectors, monkeypatch):
     for script in [
         PREFIX_CAPABILITY,
         PREFIX_CAPABILITY_AMOUNT,
@@ -96,7 +95,6 @@ def test_cashtoken_prefix_script(test_vectors):
     # test vectors from https://github.com/bitjson/cashtokens
     # change COMMITMENT_LENGTH
     COMMITMENT_LENGTH = 1500
-    monkeypatch = MonkeyPatch()
     monkeypatch.setattr(_cashtoken, "COMMITMENT_LENGTH", COMMITMENT_LENGTH)
     for test_vector in test_vectors:
         script = bytes.fromhex(test_vector["prefix"])
