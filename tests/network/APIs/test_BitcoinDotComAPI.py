@@ -1,5 +1,3 @@
-import pytest
-from _pytest.monkeypatch import MonkeyPatch
 from bitcash.network.APIs import BitcoinDotComAPI as _bapi
 
 from bitcash.network.transaction import Transaction, TxPart
@@ -75,16 +73,15 @@ class DummySession:
 
 class TestBitcoinDotComAPI:
     def setup_method(self):
-        self.monkeypatch = MonkeyPatch()
         self.api = BitcoinDotComAPI("https://dummy.com/v2/")
 
-    def test_get_blockheight(self):
+    def test_get_blockheight(self, monkeypatch):
         return_json = 800_000
-        self.monkeypatch.setattr(_bapi, "session", DummySession(return_json))
+        monkeypatch.setattr(_bapi, "session", DummySession(return_json))
         blockheight = self.api.get_blockheight()
         assert blockheight == 800_000
 
-    def test_get_balance(self):
+    def test_get_balance(self, monkeypatch):
         return_json = {
             "balanceSat": 2500,
             "unconfirmedBalanceSat": 500,
@@ -107,7 +104,7 @@ class TestBitcoinDotComAPI:
             "currentPage": 0,
             "pagesTotal": None,
         }
-        self.monkeypatch.setattr(_bapi, "session", DummySession(return_json))
+        monkeypatch.setattr(_bapi, "session", DummySession(return_json))
         balance = self.api.get_balance(BITCOIN_CASHADDRESS_CATKN)
         assert balance == 3000
 
@@ -130,11 +127,11 @@ class TestBitcoinDotComAPI:
             "currentPage": 0,
             "pagesTotal": None,
         }
-        self.monkeypatch.setattr(_bapi, "session", DummySession(return_json))
+        monkeypatch.setattr(_bapi, "session", DummySession(return_json))
         balance = self.api.get_balance(BITCOIN_CASHADDRESS_CATKN)
         assert balance == 0
 
-    def test_get_transactions(self):
+    def test_get_transactions(self, monkeypatch):
         return_json = {
             "balanceSat": 2500,
             "unconfirmedBalanceSat": 500,
@@ -159,7 +156,7 @@ class TestBitcoinDotComAPI:
             "currentPage": 0,
             "pagesTotal": None,
         }
-        self.monkeypatch.setattr(_bapi, "session", DummySession(return_json))
+        monkeypatch.setattr(_bapi, "session", DummySession(return_json))
         transactions = self.api.get_transactions(BITCOIN_CASHADDRESS_CATKN)
 
         assert transactions == [
@@ -189,12 +186,12 @@ class TestBitcoinDotComAPI:
             "currentPage": 0,
             "pagesTotal": None,
         }
-        self.monkeypatch.setattr(_bapi, "session", DummySession(return_json))
+        monkeypatch.setattr(_bapi, "session", DummySession(return_json))
         transactions = self.api.get_transactions(BITCOIN_CASHADDRESS_CATKN)
 
         assert transactions == []
 
-    def test_get_transaction(self):
+    def test_get_transaction(self, monkeypatch):
         return_json = {
             "in_mempool": False,
             "in_orphanpool": False,
@@ -298,7 +295,7 @@ class TestBitcoinDotComAPI:
             "fees": 0.00000525,
             "blockheight": 792781,
         }
-        self.monkeypatch.setattr(_bapi, "session", DummySession(return_json))
+        monkeypatch.setattr(_bapi, "session", DummySession(return_json))
         transaction = self.api.get_transaction(BITCOIN_CASHADDRESS_CATKN)
         tx = Transaction(
             "446f83e975d2870de740917df1b5221aa4bc52c6e2540188f5897c4ce775b7f4",
@@ -394,7 +391,7 @@ class TestBitcoinDotComAPI:
             "valueOut": 0.00899745,
             "fees": 0.00000255,
         }
-        self.monkeypatch.setattr(_bapi, "session", DummySession(return_json))
+        monkeypatch.setattr(_bapi, "session", DummySession(return_json))
         transaction = self.api.get_transaction(BITCOIN_CASHADDRESS_CATKN)
         tx = Transaction(
             "2dc926aac9ffb12ffa7dec784440d76e75c545d9ab4e46ea40e6b4ae73ed448f",
@@ -420,15 +417,15 @@ class TestBitcoinDotComAPI:
 
         assert transaction == tx
 
-    def test_get_tx_amount(self):
+    def test_get_tx_amount(self, monkeypatch):
         return_json = {"vout": [{"value": 0.00001}]}
-        self.monkeypatch.setattr(_bapi, "session", DummySession(return_json))
+        monkeypatch.setattr(_bapi, "session", DummySession(return_json))
         amount = self.api.get_tx_amount(
             "446f83e975d2870de740917df1b5221aa4bc52c6e2540188f5897c4ce775b7f4", 0
         )
         assert amount == 1000
 
-    def test_get_unspent(self):
+    def test_get_unspent(self, monkeypatch):
         return_json = {
             "utxos": [
                 {
@@ -492,7 +489,7 @@ class TestBitcoinDotComAPI:
             "scriptPubKey": "76a9148ee26d6c9f58369f94864dc3630cdeb17fae2f2d88ac",
             "asm": "OP_DUP OP_HASH160 8ee26d6c9f58369f94864dc3630cdeb17fae2f2d OP_EQUALVERIFY OP_CHECKSIG",
         }
-        self.monkeypatch.setattr(_bapi, "session", DummySession(return_json))
+        monkeypatch.setattr(_bapi, "session", DummySession(return_json))
         unspents = self.api.get_unspent(BITCOIN_CASHADDRESS_CATKN)
         script = "76a9148ee26d6c9f58369f94864dc3630cdeb17fae2f2d88ac"
         assert unspents == [
@@ -562,13 +559,13 @@ class TestBitcoinDotComAPI:
             "scriptPubKey": "",
             "asm": "",
         }
-        self.monkeypatch.setattr(_bapi, "session", DummySession(return_json))
+        monkeypatch.setattr(_bapi, "session", DummySession(return_json))
         unspents = self.api.get_unspent(BITCOIN_CASHADDRESS_CATKN)
         assert unspents == []
 
-    def test_get_raw_transaction(self):
+    def test_get_raw_transaction(self, monkeypatch):
         return_json = {"dummy": "dummy"}
-        self.monkeypatch.setattr(_bapi, "session", DummySession(return_json))
+        monkeypatch.setattr(_bapi, "session", DummySession(return_json))
         tx = self.api.get_raw_transaction(
             "446f83e975d2870de740917df1b5221aa4bc52c6e2540188f5897c4ce775b7f4",
         )
