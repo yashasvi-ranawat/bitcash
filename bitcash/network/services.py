@@ -315,7 +315,7 @@ class NetworkAPI:
             except cls.IGNORED_ERRORS:
                 pass
 
-        if success is not None and not success:
+        if success is False:
             raise ConnectionError(
                 "Transaction broadcast failed, or Unspents were already used."
             )
