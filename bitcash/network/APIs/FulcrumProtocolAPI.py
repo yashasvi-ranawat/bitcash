@@ -16,7 +16,7 @@ from bitcash.cashaddress import Address
 
 context = ssl.create_default_context()
 FULCRUM_PROTOCOL = "1.5.0"
-DEFAULT_SOCKET_TIMEOUT = 30.0
+DEFAULT_SOCKET_TIMEOUT = 5.0
 
 BCH_TO_SAT_MULTIPLIER = 100000000
 # TODO: Refactor constant above into a 'constants.py' file
