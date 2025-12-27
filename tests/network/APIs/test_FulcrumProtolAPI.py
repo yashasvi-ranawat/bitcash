@@ -10,7 +10,7 @@ from bitcash.network.meta import Unspent
 BITCOIN_CASHADDRESS_CATKN = "bitcoincash:zrweeythv25ltpdypewr54prs6zd3nr5rcjhrnhy2v"
 
 
-def dummy_handshake(hostname: str, port: int):
+def dummy_handshake(hostname: str, port: int, timeout: float):
     return
 
 

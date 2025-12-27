@@ -2,6 +2,8 @@ import os
 import requests
 import threading
 import concurrent.futures
+import socket
+import ssl
 
 # Import supported endpoint APIs
 from bitcash.network.APIs.BitcoinDotComAPI import BitcoinDotComAPI
@@ -182,6 +184,21 @@ class NetworkAPI:
         requests.exceptions.ChunkedEncodingError,
         requests.exceptions.ContentDecodingError,
         requests.exceptions.StreamConsumedError,
+        # SSL socket exceptions for FulcrumProtocolAPI
+        ssl.SSLError,
+        ssl.SSLZeroReturnError,
+        ssl.SSLWantReadError,
+        ssl.SSLWantWriteError,
+        ssl.SSLSyscallError,
+        ssl.SSLEOFError,
+        # Socket exceptions
+        socket.error,
+        socket.timeout,
+        ConnectionResetError,
+        ConnectionAbortedError,
+        BrokenPipeError,
+        OSError,
+        TimeoutError,
     )
 
     @classmethod
