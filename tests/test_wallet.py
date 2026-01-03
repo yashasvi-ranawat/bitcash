@@ -1,6 +1,7 @@
 import os
 import time
 import logging
+import typing
 
 import pytest
 
@@ -15,7 +16,6 @@ from bitcash.wallet import (
     PrivateKeyRegtest,
     wif_to_key,
 )
-from bitcash.exceptions import InvalidAddress
 from bitcash.network.meta import Unspent
 from .samples import (
     PRIVATE_KEY_BYTES,
@@ -38,8 +38,6 @@ from .samples import (
     BITCOIN_CASHADDRESS_TEST_CATKN,
     BITCOIN_CASHADDRESS_REGTEST,
     BITCOIN_CASHADDRESS_REGTEST_CATKN,
-    BITCOIN_ADDRESS_TEST_PAY2SH20,
-    BITCOIN_ADDRESS_REGTEST_PAY2SH20,
     BITCOIN_CASHADDRESS_CATKN,
     CASHTOKEN_CATAGORY_ID,
     CASHTOKEN_AMOUNT,
@@ -93,7 +91,7 @@ class TestBaseKey:
 
     def test_init_wif_error(self):
         with pytest.raises(TypeError):
-            BaseKey(b"\x00")
+            BaseKey(typing.cast(str, b"\x01"))
 
     def test_public_key_compressed(self):
         base_key = BaseKey(WALLET_FORMAT_COMPRESSED_MAIN)
@@ -278,7 +276,7 @@ class TestPrivateKey:
 
         key = wif_to_key("cU6s7jckL3bZUUkb3Q2CD9vNu8F1o58K5R5a3JFtidoccMbhEGKZ")
         # will raise error if leftover not cashtoken
-        tx = key.create_transaction(
+        _ = key.create_transaction(
             outputs,
             unspents=unspents_original,
             fee=0,
@@ -334,13 +332,12 @@ class TestPrivateKeyTestnet:
     def test_send_cashaddress(self):
         private_key = PrivateKeyTestnet(WALLET_FORMAT_COMPRESSED_TEST)
 
-        initial = private_key.get_balance()
+        initial = private_key.balance
         current = initial
-        tries = 0
         private_key.send([(BITCOIN_CASHADDRESS_TEST, 2000, "satoshi")])
 
         time.sleep(3)  # give some time to the indexer to update the balance
-        current = private_key.get_balance()
+        current = private_key.balance
 
         logging.debug(f"Current: {current}, Initial: {initial}")
         assert current < initial
@@ -352,11 +349,10 @@ class TestPrivateKeyTestnet:
 
         initial = private_key.balance
         current = initial
-        tries = 0
         private_key.send([("n2eMqTT929pb1RDNuqEnxdaLau1rxy3efi", 1000, "satoshi")])
 
         time.sleep(3)  # give some time to the indexer to update the balance
-        current = private_key.get_balance()
+        current = private_key.balance
 
         logging.debug(f"Current: {current}, Initial: {initial}")
         assert current < initial
@@ -436,7 +432,6 @@ class TestPrivateKeyRegtest:
 
         initial = private_key.get_balance()
         current = initial
-        tries = 0
         private_key.send([(BITCOIN_CASHADDRESS_REGTEST, 2000, "satoshi")])
 
         time.sleep(3)  # give some time to the indexer to update the balance
@@ -462,7 +457,7 @@ class TestPrivateKeyRegtest:
         private_key.send([("n2eMqTT929pb1RDNuqEnxdaLau1rxy3efi", 2000, "satoshi")])
 
         time.sleep(3)  # give some time to the indexer to update the balance
-        current = private_key.get_balance()
+        current = private_key.balance
 
         logging.debug(f"Current: {current}, Initial: {initial}")
         assert current < initial

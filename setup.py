@@ -1,10 +1,13 @@
 from setuptools import find_packages, setup
 
+version = None
 with open("bitcash/__init__.py", "r") as f:
     for line in f:
         if line.startswith("__version__"):
             version = line.strip().split("= ")[1].strip('"')
             break
+if version is None:
+    raise RuntimeError("Cannot find version information")
 
 try:
     long_description = open("README.md", "r").read()

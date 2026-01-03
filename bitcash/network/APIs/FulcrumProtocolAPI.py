@@ -12,6 +12,7 @@ from bitcash.network.APIs import BaseAPI
 from bitcash.network.meta import Unspent
 from bitcash.network.transaction import Transaction, TxPart
 from bitcash.cashaddress import Address
+from bitcash.types import NetworkStr
 
 
 context = ssl.create_default_context()
@@ -139,28 +140,31 @@ class FulcrumProtocolAPI(BaseAPI):
         self.port = int(port)
 
         self.timeout = timeout
-        self.sock = None
+        self.sock: Union[None, socket.socket, ssl.SSLSocket] = None
 
     @classmethod
-    def get_default_endpoints(cls, network: str):
+    def get_default_endpoints(cls, network: NetworkStr) -> list[str]:
         return cls.DEFAULT_ENDPOINTS[network]
 
     @check_stale_sock
-    def get_blockheight(self, *args, **kwargs):
+    def get_blockheight(self, *args, **kwargs) -> int:
+        assert self.sock is not None, "Socket is not initialized"
         result = send_json_rpc_payload(
             self.sock, "blockchain.headers.get_tip", [], *args, **kwargs
         )
         return result["height"]
 
     @check_stale_sock
-    def get_balance(self, address, *args, **kwargs):
+    def get_balance(self, address: str, *args, **kwargs) -> int:
+        assert self.sock is not None, "Socket is not initialized"
         result = send_json_rpc_payload(
             self.sock, "blockchain.address.get_balance", [address], *args, **kwargs
         )
         return result["confirmed"] + result["unconfirmed"]
 
     @check_stale_sock
-    def get_transactions(self, address, *args, **kwargs):
+    def get_transactions(self, address: str, *args, **kwargs) -> list[str]:
+        assert self.sock is not None, "Socket is not initialized"
         result = send_json_rpc_payload(
             self.sock, "blockchain.address.get_history", [address], *args, **kwargs
         )
@@ -171,7 +175,8 @@ class FulcrumProtocolAPI(BaseAPI):
         return transactions
 
     @check_stale_sock
-    def get_transaction(self, txid, *args, **kwargs):
+    def get_transaction(self, txid: str, *args, **kwargs) -> Transaction:
+        assert self.sock is not None, "Socket is not initialized"
         result = self.get_raw_transaction(txid, *args, **kwargs)
         blockheight = self.get_blockheight()
 
@@ -267,6 +272,7 @@ class FulcrumProtocolAPI(BaseAPI):
 
     @check_stale_sock
     def get_unspent(self, address: str, *args, **kwargs) -> list[Unspent]:
+        assert self.sock is not None, "Socket is not initialized"
         result = send_json_rpc_payload(
             self.sock, "blockchain.address.listunspent", [address], *args, **kwargs
         )
@@ -304,6 +310,7 @@ class FulcrumProtocolAPI(BaseAPI):
 
     @check_stale_sock
     def get_raw_transaction(self, txid: str, *args, **kwargs) -> dict[str, Any]:
+        assert self.sock is not None, "Socket is not initialized"
         result = send_json_rpc_payload(
             self.sock, "blockchain.transaction.get", [txid, True], *args, **kwargs
         )
@@ -312,6 +319,7 @@ class FulcrumProtocolAPI(BaseAPI):
 
     @check_stale_sock
     def broadcast_tx(self, tx_hex: str, *args, **kwargs) -> bool:  # pragma: no cover
+        assert self.sock is not None, "Socket is not initialized"
         _ = send_json_rpc_payload(
             self.sock, "blockchain.transaction.broadcast", [tx_hex]
         )

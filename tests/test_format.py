@@ -1,54 +1,51 @@
 import pytest
 from bitcash import crypto
 
+from bitcash.curve import Point
 from bitcash.format import (
+    address_to_cashtokenaddress,
     address_to_public_key_hash,
     bytes_to_wif,
+    cashtokenaddress_to_address,
     coords_to_public_key,
+    hex_to_asm,
     point_to_public_key,
-    public_key_to_coords,
     public_key_to_address,
+    public_key_to_coords,
     verify_sig,
     wif_checksum_check,
     wif_to_bytes,
-    hex_to_asm,
-    address_to_cashtokenaddress,
-    cashtokenaddress_to_address,
 )
+
 from .samples import (
     BITCOIN_ADDRESS,
-    BITCOIN_ADDRESS_COMPRESSED,
+    BITCOIN_CASHADDRESS,
     BITCOIN_CASHADDRESS_CATKN,
+    BITCOIN_CASHADDRESS_COMPRESSED,
     BITCOIN_CASHADDRESS_PAY2SH20,
     BITCOIN_CASHADDRESS_PAY2SH32,
-    BITCOIN_ADDRESS_TEST,
-    BITCOIN_CASHADDRESS_TEST_CATKN,
-    BITCOIN_ADDRESS_TEST_COMPRESSED,
-    BITCOIN_ADDRESS_REGTEST,
-    BITCOIN_ADDRESS_REGTEST_COMPRESSED,
-    BITCOIN_CASHADDRESS_TEST_PAY2SH20,
-    BITCOIN_CASHADDRESS_TEST_PAY2SH32,
     BITCOIN_CASHADDRESS_REGTEST,
     BITCOIN_CASHADDRESS_REGTEST_COMPRESSED,
     BITCOIN_CASHADDRESS_REGTEST_PAY2SH20,
+    BITCOIN_CASHADDRESS_TEST,
+    BITCOIN_CASHADDRESS_TEST_CATKN,
+    BITCOIN_CASHADDRESS_TEST_COMPRESSED,
+    BITCOIN_CASHADDRESS_TEST_PAY2SH20,
+    BITCOIN_CASHADDRESS_TEST_PAY2SH32,
     PRIVATE_KEY_BYTES,
     PUBKEY_HASH,
+    PUBKEY_HASH_COMPRESSED,
     PUBKEY_HASH_P2SH20,
     PUBKEY_HASH_P2SH32,
-    BITCOIN_CASHADDRESS,
-    BITCOIN_CASHADDRESS_TEST,
-    BITCOIN_CASHADDRESS_TEST_COMPRESSED,
-    PUBKEY_HASH_COMPRESSED,
     PUBLIC_KEY_COMPRESSED,
     PUBLIC_KEY_UNCOMPRESSED,
     PUBLIC_KEY_X,
     PUBLIC_KEY_Y,
-    BITCOIN_CASHADDRESS_COMPRESSED,
     WALLET_FORMAT_COMPRESSED_MAIN,
     WALLET_FORMAT_COMPRESSED_TEST,
     WALLET_FORMAT_MAIN,
-    WALLET_FORMAT_TEST,
     WALLET_FORMAT_REGTEST,
+    WALLET_FORMAT_TEST,
 )
 
 VALID_SIGNATURE = (
@@ -290,11 +287,9 @@ class TestCoordsToPublicKey:
 
 
 def test_point_to_public_key():
-    class Point:
-        x = PUBLIC_KEY_X
-        y = PUBLIC_KEY_Y
+    point = Point(x=PUBLIC_KEY_X, y=PUBLIC_KEY_Y)
 
-    assert point_to_public_key(Point) == coords_to_public_key(Point.x, Point.y)
+    assert point_to_public_key(point) == coords_to_public_key(point.x, point.y)
 
 
 def test_address_to_public_key_hash():

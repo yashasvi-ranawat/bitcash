@@ -1,3 +1,4 @@
+from typing import Optional
 from bitcash.format import hex_to_asm
 
 
@@ -6,7 +7,14 @@ class Transaction:
     Representation of a transaction returned from the network.
     """
 
-    def __init__(self, txid, block, amount_in, amount_out, amount_fee):
+    def __init__(
+        self,
+        txid: str,
+        block: Optional[int],
+        amount_in: int,
+        amount_out: int,
+        amount_fee: int,
+    ):
         self.txid = txid
         self.block = block
 
@@ -17,8 +25,8 @@ class Transaction:
         self.amount_out = amount_out
         self.amount_fee = amount_fee
 
-        self.inputs = []
-        self.outputs = []
+        self.inputs: list[TxPart] = []
+        self.outputs: list[TxPart] = []
 
     def to_dict(self):
         return {
@@ -61,14 +69,14 @@ class TxPart:
 
     def __init__(
         self,
-        address,
-        amount,
-        category_id=None,
-        nft_capability=None,
-        nft_commitment=None,
-        token_amount=None,
-        asm=None,
-        data_hex=None,
+        address: Optional[str],
+        amount: int,
+        category_id: Optional[str]=None,
+        nft_capability: Optional[str]=None,
+        nft_commitment: Optional[bytes]=None,
+        token_amount: Optional[int]=None,
+        asm: Optional[str]=None,
+        data_hex: Optional[str]=None,
     ):
         self.address = address
         self.amount = amount
@@ -76,7 +84,7 @@ class TxPart:
         self.nft_capability = nft_capability
         self.nft_commitment = nft_commitment
         self.token_amount = token_amount
-        self.op_return = None
+        self.op_return: Optional[str] = None
 
         if data_hex is not None:
             asm = hex_to_asm(data_hex)

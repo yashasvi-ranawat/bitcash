@@ -1,5 +1,7 @@
 import os
 import time
+from typing import Literal
+import typing
 
 import pytest
 import bitcash
@@ -16,15 +18,11 @@ from bitcash.network.services import (
     set_service_timeout,
 )
 from bitcash.network.transaction import Transaction
+from bitcash.types import Network
 from tests.samples import (
     VALID_BITCOINCOM_ENDPOINT_URLS,
     INVALID_BITCOINCOM_ENDPOINT_URLS,
     VALID_FULCRUM_ENDPOINT_URLS,
-)
-from tests.utils import (
-    catch_errors_raise_warnings,
-    decorate_methods,
-    raise_connection_error,
 )
 
 MAIN_ADDRESS_USED1 = "bitcoincash:qrg2nw20kxhspdlec82qxrgdegrq23hyuyjx2h29sy"
@@ -41,9 +39,9 @@ TEST_TX2 = "3c26deab2df023a8dbee15bf47701332f6661323ea117a58362b0ea9605129fd"
 
 
 def test_set_service_timeout():
-    original = bitcash.network.services.DEFAULT_TIMEOUT
+    original = bitcash.network.services.DEFAULT_TIMEOUT  # pyright: ignore
     set_service_timeout(3)
-    updated = bitcash.network.services.DEFAULT_TIMEOUT
+    updated = bitcash.network.services.DEFAULT_TIMEOUT  # pyright: ignore
 
     assert original != updated
     assert updated == 3
@@ -56,27 +54,27 @@ class MockBackend(NetworkAPI):
 
     @classmethod
     def get_balance(cls, *args, **kwargs):
-        raise_connection_error()
+        raise ConnectionError()
 
     @classmethod
     def get_transactions(cls, *args, **kwargs):
-        raise_connection_error()
+        raise ConnectionError()
 
     @classmethod
     def get_transaction(cls, *args, **kwargs):
-        raise_connection_error()
+        raise ConnectionError()
 
     @classmethod
     def get_unspent(cls, *args, **kwargs):
-        raise_connection_error()
+        raise ConnectionError()
 
     @classmethod
     def get_tx_amount(cls, *args, **kwargs):
-        raise_connection_error()
+        raise ConnectionError()
 
     @classmethod
     def get_raw_transaction(cls, *args, **kwargs):
-        raise_connection_error()
+        raise ConnectionError()
 
 
 class MockEndpoint:
@@ -103,7 +101,11 @@ def mock_get_endpoints_for(network):
 
 def test_get_ordered_endpoints_for(monkeypatch):
     monkeypatch.setattr(_services, "get_endpoints_for", mock_get_endpoints_for)
-    endpoints = get_sanitized_endpoints_for("mock_mainnet")
+    # get_sanitized_endpoints_for caches enpoints, so its important to call mock_mainnet
+    # to ensure we get fresh endpoints
+    endpoints = get_sanitized_endpoints_for(
+        typing.cast(Literal["mainnet"], "mock_mainnet")
+    )
     assert len(endpoints) == 4
     for endpoint in endpoints:
         assert endpoint.get_blockheight() == 4

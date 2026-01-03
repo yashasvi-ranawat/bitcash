@@ -1,5 +1,6 @@
 from collections import OrderedDict
 from decimal import ROUND_DOWN
+from typing import Callable, Union
 
 import requests
 from bitcash.network.http import session
@@ -123,7 +124,7 @@ class BitpayRates:
     SINGLE_RATE = "https://bitpay.com/rates/BCH/"
 
     @classmethod
-    def currency_to_satoshi(cls, currency):
+    def currency_to_satoshi(cls, currency: str) -> int:
         headers = {"x-accept-version": "2.0.0", "Accept": "application/json"}
         r = session.get(cls.SINGLE_RATE + currency, headers=headers)
         r.raise_for_status()
@@ -131,7 +132,7 @@ class BitpayRates:
         return int(ONE / Decimal(rate) * BCH)
 
     @classmethod
-    def usd_to_satoshi(cls):  # pragma: no cover
+    def usd_to_satoshi(cls) -> int:  # pragma: no cover
         return cls.currency_to_satoshi("usd")
 
     @classmethod
@@ -256,7 +257,7 @@ class CoinbaseRates:
     SINGLE_RATE = "https://api.coinbase.com/v2/exchange-rates?currency=BCH"
 
     @classmethod
-    def currency_to_satoshi(cls, currency):
+    def currency_to_satoshi(cls, currency: str) -> int:
         r = session.get(cls.SINGLE_RATE.format(currency))
         r.raise_for_status()
         rate = r.json()["data"]["rates"][currency]
@@ -598,7 +599,7 @@ class RatesAPI:
         raise ConnectionError("All APIs are unreachable.")
 
 
-EXCHANGE_RATES = {
+EXCHANGE_RATES: dict[str, Callable[[], int]] = {
     "satoshi": satoshi_to_satoshi,
     "ubch": ubch_to_satoshi,
     "mbch": mbch_to_satoshi,
@@ -635,26 +636,24 @@ EXCHANGE_RATES = {
 }
 
 
-def currency_to_satoshi(amount, currency):
+def currency_to_satoshi(amount: Union[int, float, str], currency: str) -> int:
     """Converts a given amount of currency to the equivalent number of
     satoshi. The amount can be either an int, float, or string as long as
     it is a valid input to :py:class:`decimal.Decimal`.
 
     :param amount: The quantity of currency.
     :param currency: One of the :ref:`supported currencies`.
-    :type currency: ``str``
-    :rtype: ``int``
     """
     satoshis = EXCHANGE_RATES[currency]()
     return int(satoshis * Decimal(amount))
 
 
 @time_cache(max_age=DEFAULT_CACHE_TIME, cache_size=len(EXCHANGE_RATES))
-def _currency_to_satoshi_cached(currency):
+def _currency_to_satoshi_cached(currency: str) -> int:
     return EXCHANGE_RATES[currency]()
 
 
-def currency_to_satoshi_cached(amount, currency):
+def currency_to_satoshi_cached(amount: int, currency: str) -> int:
     """Converts a given amount of currency to the equivalent number of
     satoshi. The amount can be either an int, float, or string as long as
     it is a valid input to :py:class:`decimal.Decimal`. Results are cached
@@ -662,22 +661,17 @@ def currency_to_satoshi_cached(amount, currency):
 
     :param amount: The quantity of currency.
     :param currency: One of the :ref:`supported currencies`.
-    :type currency: ``str``
-    :rtype: ``int``
     """
     satoshis = _currency_to_satoshi_cached(currency)
     return int(satoshis * Decimal(amount))
 
 
-def satoshi_to_currency(num, currency):
+def satoshi_to_currency(num: int, currency: str) -> str:
     """Converts a given number of satoshi to another currency as a formatted
     string rounded down to the proper number of decimal places.
 
     :param num: The number of satoshi.
-    :type num: ``int``
     :param currency: One of the :ref:`supported currencies`.
-    :type currency: ``str``
-    :rtype: ``str``
     """
     return "{:f}".format(
         Decimal(num / Decimal(EXCHANGE_RATES[currency]()))
@@ -688,16 +682,13 @@ def satoshi_to_currency(num, currency):
     )
 
 
-def satoshi_to_currency_cached(num, currency):
+def satoshi_to_currency_cached(num: int, currency: str) -> str:
     """Converts a given number of satoshi to another currency as a formatted
     string rounded down to the proper number of decimal places. Results are
     cached using a decorator for 60 seconds by default. See :ref:`cache times`.
 
     :param num: The number of satoshi.
-    :type num: ``int``
     :param currency: One of the :ref:`supported currencies`.
-    :type currency: ``str``
-    :rtype: ``str``
     """
     return "{:f}".format(
         Decimal(num / Decimal(currency_to_satoshi_cached(1, currency)))

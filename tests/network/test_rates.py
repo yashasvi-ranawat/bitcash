@@ -18,9 +18,9 @@ from bitcash.utils import Decimal
 
 
 def test_set_rate_cache_time():
-    original = bitcash.network.rates.DEFAULT_CACHE_TIME
+    original = bitcash.network.rates.DEFAULT_CACHE_TIME  # pyright: ignore
     set_rate_cache_time(30)
-    updated = bitcash.network.rates.DEFAULT_CACHE_TIME
+    updated = bitcash.network.rates.DEFAULT_CACHE_TIME  # pyright: ignore
 
     assert original != updated
     assert updated == 30

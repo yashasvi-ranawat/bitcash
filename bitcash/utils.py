@@ -2,6 +2,7 @@ import decimal
 import functools
 import time
 from binascii import hexlify
+from typing import Any, Generator, Literal, Sequence, TypeVar, Union
 
 
 class Decimal(decimal.Decimal):
@@ -9,41 +10,43 @@ class Decimal(decimal.Decimal):
         return super().__new__(cls, str(value))
 
 
-def chunk_data(data, size):
+def chunk_data(data: bytes, size: int) -> Generator[bytes, None, None]:
     return (data[i : i + size] for i in range(0, len(data), size))
 
 
-def int_to_unknown_bytes(num, byteorder="big"):
+def int_to_unknown_bytes(
+    num: int, byteorder: Union[Literal["big"], Literal["little"]] = "big"
+) -> bytes:
     """Converts an int to the least number of bytes as possible."""
     return num.to_bytes((num.bit_length() + 7) // 8 or 1, byteorder)
 
 
-def bytes_to_hex(bytestr, upper=False):
+def bytes_to_hex(bytestr: bytes, upper=False) -> str:
     hexed = hexlify(bytestr).decode()
     return hexed.upper() if upper else hexed
 
 
-def hex_to_bytes(hexed):
+def hex_to_bytes(hexed: str) -> bytes:
     if len(hexed) & 1:
         hexed = "0" + hexed
 
     return bytes.fromhex(hexed)
 
 
-def int_to_hex(num, upper=False):
+def int_to_hex(num: int, upper=False) -> str:
     hexed = hex(num)[2:]
     return hexed.upper() if upper else hexed
 
 
-def hex_to_int(hexed):
+def hex_to_int(hexed: str) -> int:
     return int(hexed, 16)
 
 
-def flip_hex_byte_order(string):
+def flip_hex_byte_order(string: str) -> str:
     return bytes_to_hex(hex_to_bytes(string)[::-1])
 
 
-def int_to_varint(val):
+def int_to_varint(val: int) -> bytes:
     if val < 253:
         return val.to_bytes(1, "little")
     elif val <= 65535:

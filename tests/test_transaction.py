@@ -13,6 +13,7 @@ from bitcash.transaction import (
 )
 from bitcash.op import OpCodes
 from bitcash.cashaddress import Address
+from bitcash.types import CashTokens, PreparedOutput
 from bitcash.utils import hex_to_bytes
 from bitcash.wallet import PrivateKey
 from .samples import (
@@ -57,7 +58,7 @@ INPUTS = [
             b"\xacCz\xb2gaT\xa3\xc2\xda#\xad\xf3"
         ),
         b"\x01\x00\x00\x00",
-        0,
+        b"0",
     )
 ]
 INPUT_BLOCK = (
@@ -77,27 +78,27 @@ UNSPENTS = [
         1,
     )
 ]
+EMPTY_CASHTOKEN = CashTokens(
+    None,
+    None,
+    None,
+    None,
+)
 OUTPUTS = [
-    (
+    PreparedOutput(
         Address.from_string(BITCOIN_CASHADDRESS).scriptcode,
         50000,
-        None,
-        None,
-        None,
-        None,
+        EMPTY_CASHTOKEN,
     ),
-    (
+    PreparedOutput(
         Address.from_string(BITCOIN_CASHADDRESS_COMPRESSED).scriptcode,
         83658760,
-        None,
-        None,
-        None,
-        None,
+        EMPTY_CASHTOKEN,
     ),
 ]
 MESSAGES = [
-    (OpCodes.OP_RETURN.binary + b"\x05" + b"hello", 0, None, None, None, None),
-    (OpCodes.OP_RETURN.binary + b"\x05" + b"there", 0, None, None, None, None),
+    PreparedOutput(OpCodes.OP_RETURN.binary + b"\x05" + b"hello", 0, EMPTY_CASHTOKEN),
+    PreparedOutput(OpCodes.OP_RETURN.binary + b"\x05" + b"there", 0, EMPTY_CASHTOKEN),
 ]
 OUTPUT_BLOCK = (
     "50c30000000000001976a91492461bde6283b461ece7ddf4dbf1e0a48bd113d888ac"
@@ -127,10 +128,12 @@ SIGNED_DATA = (
     b"\x92x~\n\x1a\xac\xc0\xf0\xff\xf7\xda\xfe0\xb7!6t"
 )
 
+AMOUNT = b"\x00\x00\x00\x00\x00\x00\x00\x00"
+
 
 class TestTxIn:
     def test_init(self):
-        txin = TxIn(b"script", b"\x06", b"txid", b"\x04", 0, b"a")
+        txin = TxIn(b"script", b"\x06", b"txid", b"\x04", AMOUNT, b"a")
         assert txin.script == b"script"
         assert txin.script_len == b"\x06"
         assert txin.txid == b"txid"
@@ -138,15 +141,15 @@ class TestTxIn:
         assert txin.token_prefix == b"a"
 
     def test_equality(self):
-        txin1 = TxIn(b"script", b"\x06", b"txid", b"\x04", 0)
-        txin2 = TxIn(b"script", b"\x06", b"txid", b"\x04", 0)
-        txin3 = TxIn(b"script", b"\x06", b"txi", b"\x03", 0)
+        txin1 = TxIn(b"script", b"\x06", b"txid", b"\x04", AMOUNT)
+        txin2 = TxIn(b"script", b"\x06", b"txid", b"\x04", AMOUNT)
+        txin3 = TxIn(b"script", b"\x06", b"txi", b"\x03", AMOUNT)
         assert txin1 == txin2
         assert txin1 != txin3
 
     def test_repr(self):
-        txin = TxIn(b"script", b"\x06", b"txid", b"\x04", 0)
-        assert repr(txin) == "TxIn(b'script', {}, b'txid', {}, 0, {})" "".format(
+        txin = TxIn(b"script", b"\x06", b"txid", b"\x04", AMOUNT)
+        assert repr(txin) == "TxIn(b'script', {}, b'txid', {}, 0, {})".format(
             repr(b"\x06"), repr(b"\x04"), repr(b"")
         )
 
@@ -160,7 +163,7 @@ class TestSanitizeTxData:
         unspents_original = [Unspent(10000, 0, "", "", 0), Unspent(10000, 0, "", "", 0)]
         outputs_original = [(BITCOIN_CASHADDRESS_COMPRESSED, 1000, "satoshi")]
 
-        unspents, outputs = sanitize_tx_data(
+        _, outputs = sanitize_tx_data(
             unspents_original,
             outputs_original,
             fee=5,
@@ -179,7 +182,7 @@ class TestSanitizeTxData:
 
         BYTES = len(b"hello").to_bytes(1, byteorder="little") + b"hello"
 
-        unspents, outputs = sanitize_tx_data(
+        _, outputs = sanitize_tx_data(
             unspents_original,
             outputs_original,
             fee=5,
@@ -353,7 +356,7 @@ class TestSanitizeTxData:
             (BITCOIN_CASHADDRESS_PAY2SH20, 11065, "satoshi"),
         ]
 
-        unspents, outputs = sanitize_tx_data(
+        _, outputs = sanitize_tx_data(
             unspents_original,
             outputs_original,
             fee=1,
@@ -370,7 +373,7 @@ class TestSanitizeTxData:
             (BITCOIN_CASHADDRESS_PAY2SH20, 11065, "satoshi"),
         ]
 
-        unspents, outputs = sanitize_tx_data(
+        _, outputs = sanitize_tx_data(
             unspents_original,
             outputs_original,
             fee=1,
@@ -392,7 +395,7 @@ class TestSanitizeTxData:
             (BITCOIN_CASHADDRESS_PAY2SH32, 11065, "satoshi"),
         ]
 
-        unspents, outputs = sanitize_tx_data(
+        _, outputs = sanitize_tx_data(
             unspents_original,
             outputs_original,
             fee=1,
@@ -409,7 +412,7 @@ class TestSanitizeTxData:
             (BITCOIN_CASHADDRESS_PAY2SH32, 11065, "satoshi"),
         ]
 
-        unspents, outputs = sanitize_tx_data(
+        _, outputs = sanitize_tx_data(
             unspents_original,
             outputs_original,
             fee=1,
@@ -430,7 +433,7 @@ class TestSanitizeTxDataCashToken:
             Unspent(1000, 0, "script", "txid", 1, "caf2", "minting"),
         ]
         outputs_original = [
-            [BITCOIN_CASHADDRESS_CATKN, 1000, "satoshi", "caff", "none", None, None]
+            (BITCOIN_CASHADDRESS_CATKN, 1000, "satoshi", "caff", "none", None, None)
         ]
 
         unspents, outputs = sanitize_tx_data(
@@ -454,7 +457,7 @@ class TestSanitizeTxDataCashToken:
             Unspent(1000, 0, "script", "txid", 1, "caff", "minting"),
         ]
         outputs_original = [
-            [BITCOIN_CASHADDRESS_CATKN, 1100, "satoshi", "caff", "none", None, None]
+            (BITCOIN_CASHADDRESS_CATKN, 1100, "satoshi", "caff", "none", None, None)
         ]
         script = Address.from_string(BITCOIN_CASHADDRESS_CATKN).scriptcode
 
@@ -478,7 +481,7 @@ class TestSanitizeTxDataCashToken:
             Unspent(1000, 0, "script", "txid", 1, "caff", "minting"),
         ]
         outputs_original = [
-            [BITCOIN_CASHADDRESS_CATKN, 800, "satoshi", "cafe", "none", None, None]
+            (BITCOIN_CASHADDRESS_CATKN, 800, "satoshi", "cafe", "none", None, None)
         ]
 
         unspents, outputs = sanitize_tx_data(
@@ -497,7 +500,7 @@ class TestSanitizeTxDataCashToken:
 
         # fail genesis
         outputs_original = [
-            [BITCOIN_CASHADDRESS_CATKN, 800, "satoshi", "caca", "none", None, None]
+            (BITCOIN_CASHADDRESS_CATKN, 800, "satoshi", "caca", "none", None, None)
         ]
 
         # caca is not genesis, since txindex = 1. Thus it is treated as
@@ -577,7 +580,7 @@ class TestConstructOutputBlock:
             + b"hello"
         )
         assert construct_output_block(
-            OUTPUTS + [(BYTES, 0, None, None, None, None)]
+            OUTPUTS + [PreparedOutput(BYTES, 0, EMPTY_CASHTOKEN)]
         ) == hex_to_bytes(OUTPUT_BLOCK_MESSAGE_PUSHDATA)
 
     def test_long_pushdata(self):
@@ -601,7 +604,7 @@ class TestConstructOutputBlock:
     def test_string_pushdata(self):
         # Preferable to raise TypeError if string input with custom_pushdata=True.
         with pytest.raises(TypeError):
-            construct_output_block(OUTPUTS + [("hello", 0)], custom_pushdata=True)
+            construct_output_block(OUTPUTS + [("hello", 0, EMPTY_CASHTOKEN)])  # pyright: ignore
 
 
 def test_construct_input_block():

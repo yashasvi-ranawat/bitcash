@@ -247,21 +247,21 @@ class OpCodes(IntEnum):
     OP_TOKENPREFIX = 0xEF
 
     @property
-    def binary(self):
+    def binary(self) -> bytes:
         """
         Adds easy way to convert to binary
 
-        >>> OpCodes.OP_0.b
+        >>> OpCodes.OP_0.binary
         b"\x00"
         """
         return self.value.to_bytes(1, "little")
 
     @property
-    def hex(self):
+    def hex(self) -> str:
         """
         Adds easy way to convert to hex
         >>> OpCodes.OP_0.h
         "00"
         """
         # converty from binary to preserve 8 bit hex
-        return self.b.hex()
+        return self.binary.hex()

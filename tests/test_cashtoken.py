@@ -1,33 +1,35 @@
-import pytest
 import json
 import pathlib
+import typing
+import pytest
 
 
-from bitcash import cashtoken as _cashtoken
-from bitcash.network.meta import Unspent
-from bitcash.cashtoken import (
-    verify_cashtoken_output_data,
-    parse_cashtoken_prefix,
-    generate_cashtoken_prefix,
-    prepare_output,
-    Unspents,
-    select_cashtoken_utxo,
-    _calculate_dust_value,
-)
-from bitcash.exceptions import InsufficientFunds, InvalidCashToken, InvalidAddress
+from bitcash import types as _types
 from bitcash.cashaddress import Address
+from bitcash.cashtoken import (
+    Unspents,
+    _calculate_dust_value,
+    generate_cashtoken_prefix,
+    parse_cashtoken_prefix,
+    prepare_output,
+    select_cashtoken_utxo,
+)
+from bitcash.exceptions import InsufficientFunds, InvalidAddress, InvalidCashToken
+from bitcash.network.meta import Unspent
+from bitcash.types import CashTokens, NFTCapability, PreparedOutput
+
 from .samples import (
-    CASHTOKEN_CATAGORY_ID,
-    CASHTOKEN_CAPABILITY,
-    CASHTOKEN_COMMITMENT,
+    BITCOIN_CASHADDRESS,
+    BITCOIN_CASHADDRESS_CATKN,
     CASHTOKEN_AMOUNT,
+    CASHTOKEN_CAPABILITY,
+    CASHTOKEN_CATAGORY_ID,
+    CASHTOKEN_COMMITMENT,
+    PREFIX_AMOUNT,
     PREFIX_CAPABILITY,
     PREFIX_CAPABILITY_AMOUNT,
     PREFIX_CAPABILITY_COMMITMENT,
     PREFIX_CAPABILITY_COMMITMENT_AMOUNT,
-    PREFIX_AMOUNT,
-    BITCOIN_CASHADDRESS,
-    BITCOIN_CASHADDRESS_CATKN,
 )
 
 
@@ -46,38 +48,38 @@ def test_verify_cashtoken_output_data():
     # test bad inputs
     # missing cashtoken fields
     with pytest.raises(InvalidCashToken):
-        verify_cashtoken_output_data(CASHTOKEN_CATAGORY_ID)
+        CashTokens(CASHTOKEN_CATAGORY_ID, None, None, None).verify()
     # bad capability
     with pytest.raises(InvalidCashToken):
-        verify_cashtoken_output_data(CASHTOKEN_CATAGORY_ID, "bad_capability")
+        CashTokens(
+            CASHTOKEN_CATAGORY_ID,
+            typing.cast(NFTCapability, "str capability"),
+            None,
+            None,
+        ).verify()
     # bad commitment
     with pytest.raises(InvalidCashToken):
-        verify_cashtoken_output_data(
-            CASHTOKEN_CATAGORY_ID, nft_commitment=b"no capability"
-        )
-    with pytest.raises(ValueError):
-        verify_cashtoken_output_data(
-            CASHTOKEN_CATAGORY_ID, CASHTOKEN_CAPABILITY, "str_commitment"
-        )
+        CashTokens(CASHTOKEN_CATAGORY_ID, None, b"no capability", None).verify()
     with pytest.raises(InvalidCashToken):
-        verify_cashtoken_output_data(
+        CashTokens(
+            CASHTOKEN_CATAGORY_ID, None, typing.cast(bytes, "str capability"), None
+        ).verify()
+    with pytest.raises(InvalidCashToken):
+        CashTokens(
             CASHTOKEN_CATAGORY_ID,
-            CASHTOKEN_CAPABILITY,
+            NFTCapability[CASHTOKEN_CAPABILITY],
             b"bad_length" * 40,
-        )
+            None,
+        ).verify()
     with pytest.raises(InvalidCashToken):
-        verify_cashtoken_output_data(
-            CASHTOKEN_CATAGORY_ID,
-            CASHTOKEN_CAPABILITY,
-            b"",
-        )
+        CashTokens(
+            CASHTOKEN_CATAGORY_ID, NFTCapability[CASHTOKEN_CAPABILITY], b"", None
+        ).verify()
     # bad token_amount
     with pytest.raises(InvalidCashToken):
-        verify_cashtoken_output_data(CASHTOKEN_CATAGORY_ID, token_amount=0)
+        CashTokens(CASHTOKEN_CATAGORY_ID, None, None, 0).verify()
     with pytest.raises(InvalidCashToken):
-        verify_cashtoken_output_data(
-            CASHTOKEN_CATAGORY_ID, token_amount=9223372036854775808
-        )
+        CashTokens(CASHTOKEN_CATAGORY_ID, None, None, 9223372036854775808).verify()
 
 
 def test_cashtoken_prefix_script(test_vectors, monkeypatch):
@@ -90,12 +92,12 @@ def test_cashtoken_prefix_script(test_vectors, monkeypatch):
         b"",
     ]:
         cashtoken = parse_cashtoken_prefix(script)
-        assert script == generate_cashtoken_prefix(*cashtoken)
+        assert script == generate_cashtoken_prefix(cashtoken)
 
     # test vectors from https://github.com/bitjson/cashtokens
     # change COMMITMENT_LENGTH
     COMMITMENT_LENGTH = 1500
-    monkeypatch.setattr(_cashtoken, "COMMITMENT_LENGTH", COMMITMENT_LENGTH)
+    monkeypatch.setattr(_types, "COMMITMENT_LENGTH", COMMITMENT_LENGTH)
     for test_vector in test_vectors:
         script = bytes.fromhex(test_vector["prefix"])
         category_id = test_vector["data"]["category"]
@@ -105,16 +107,16 @@ def test_cashtoken_prefix_script(test_vectors, monkeypatch):
             nft_capability = None
             nft_commitment = None
         else:
-            nft_capability = test_vector["data"]["nft"]["capability"]
+            nft_capability = typing.cast(str, test_vector["data"]["nft"]["capability"])
             nft_commitment = test_vector["data"]["nft"]["commitment"]
             nft_commitment = bytes.fromhex(nft_commitment)
             if nft_commitment == b"":
                 nft_commitment = None
         if token_amount == 0:
             token_amount = None
-        assert parse_cashtoken_prefix(script) == (
+        assert parse_cashtoken_prefix(script) == CashTokens(
             category_id,
-            nft_capability,
+            NFTCapability[nft_capability] if nft_capability else None,
             nft_commitment,
             token_amount,
         )
@@ -124,12 +126,14 @@ class TestPrepareOutput:
     def test_output(self):
         output = (BITCOIN_CASHADDRESS, 20, "bch")
         output = prepare_output(output)
-        _ = Address.from_string(BITCOIN_CASHADDRESS_CATKN).scriptcode
-        assert output == (_, 2000000000, None, None, None, None)
+        script = Address.from_string(BITCOIN_CASHADDRESS_CATKN).scriptcode
+        assert output == PreparedOutput(
+            script, 2000000000, CashTokens(None, None, None, None)
+        )
 
-        cashtoken = (
+        cashtoken = CashTokens(
             CASHTOKEN_CATAGORY_ID,
-            CASHTOKEN_CAPABILITY,
+            NFTCapability[CASHTOKEN_CAPABILITY],
             CASHTOKEN_COMMITMENT,
             CASHTOKEN_AMOUNT,
         )
@@ -137,26 +141,27 @@ class TestPrepareOutput:
             BITCOIN_CASHADDRESS_CATKN,
             20,
             "bch",
-            *cashtoken,
+            CASHTOKEN_CATAGORY_ID,
+            CASHTOKEN_CAPABILITY,
+            CASHTOKEN_COMMITMENT,
+            CASHTOKEN_AMOUNT,
         )
-        output = prepare_output(output)
-        assert output == (
+        prepared_output = prepare_output(output)
+        assert prepared_output == PreparedOutput(
             (
-                generate_cashtoken_prefix(*cashtoken)
+                generate_cashtoken_prefix(cashtoken)
                 + Address.from_string(BITCOIN_CASHADDRESS_CATKN).scriptcode
             ),
             2000000000,
-            *cashtoken,
+            cashtoken,
         )
 
-        # already prepared
-        output == prepare_output(output)
         # bad length
         with pytest.raises(RuntimeError):
-            output = prepare_output(output[1:])
+            output = prepare_output(typing.cast(tuple[str, int, str], output[1:]))
         # bad prepared out
-        with pytest.raises(RuntimeError):
-            output = ("", *output[1:])
+        with pytest.raises(InvalidAddress):
+            output = typing.cast(tuple[str, int, str], ("", *output[1:]))
             output = prepare_output(output)
 
     def test_token_signal(self):
@@ -289,7 +294,9 @@ class TestUnspents:
         cashtoken = Unspents([])
         cashtoken.amount = 1000
         cashtoken.tokendata = tokendata
-        cashtoken.subtract_output((b"", 500, None, None, None, None))
+        cashtoken.subtract_output(
+            PreparedOutput(b"", 500, CashTokens(None, None, None, None))
+        )
         assert cashtoken.amount == 500
         assert cashtoken.tokendata == tokendata
 
@@ -300,7 +307,11 @@ class TestUnspents:
                 Unspent(500, 12, "script", "txid", 2, "category1", "minting"),
             ]
         )
-        cashtoken.subtract_output((b"", 500, "category_new", "none", None, 30))
+        cashtoken.subtract_output(
+            PreparedOutput(
+                b"", 500, CashTokens("category_new", NFTCapability["none"], None, 30)
+            )
+        )
         assert cashtoken.amount == 500
         assert cashtoken.tokendata == {
             "category1": {"nft": [{"capability": "minting"}]}
@@ -314,38 +325,78 @@ class TestUnspents:
                     Unspent(500, 12, "script", "category_new", 1),
                 ]
             )
-            cashtoken.subtract_output((b"", 500, "category_new", "none", None, 30))
+            cashtoken.subtract_output(
+                PreparedOutput(
+                    b"",
+                    500,
+                    CashTokens("category_new", NFTCapability["none"], None, 30),
+                )
+            )
         cashtoken = Unspents([])
         cashtoken.amount = 1000
         cashtoken.tokendata = tokendata
         # category does not exist
         with pytest.raises(InsufficientFunds):
-            cashtoken.subtract_output((b"", 500, "category0", "mutable", None, None))
+            cashtoken.subtract_output(
+                PreparedOutput(
+                    b"",
+                    500,
+                    CashTokens("category0", NFTCapability["mutable"], None, None),
+                )
+            )
         # bad token amount
         with pytest.raises(InsufficientFunds):
-            cashtoken.subtract_output((b"", 500, "category1", None, None, 50))
+            cashtoken.subtract_output(
+                PreparedOutput(b"", 500, CashTokens("category1", None, None, 50))
+            )
         with pytest.raises(InsufficientFunds):
-            cashtoken.subtract_output((b"", 500, "category2", None, None, 500))
+            cashtoken.subtract_output(
+                PreparedOutput(b"", 500, CashTokens("category2", None, None, 500))
+            )
         # bad nft
         with pytest.raises(InsufficientFunds):
-            cashtoken.subtract_output((b"", 500, "category3", "mutable", None, None))
-        with pytest.raises(InsufficientFunds):
             cashtoken.subtract_output(
-                (b"", 500, "category4", "none", b"commitment", None)
+                PreparedOutput(
+                    b"",
+                    500,
+                    CashTokens("category3", NFTCapability["mutable"], None, None),
+                )
             )
         with pytest.raises(InsufficientFunds):
             cashtoken.subtract_output(
-                (b"", 500, "category4", "mutable", b"commitment", None)
+                PreparedOutput(
+                    b"",
+                    500,
+                    CashTokens("category4", NFTCapability["none"], b"commitment", None),
+                )
             )
         with pytest.raises(InsufficientFunds):
             cashtoken.subtract_output(
-                (b"", 500, "category4", "minting", b"commitment", None)
+                PreparedOutput(
+                    b"",
+                    500,
+                    CashTokens(
+                        "category4", NFTCapability["mutable"], b"commitment", None
+                    ),
+                )
+            )
+        with pytest.raises(InsufficientFunds):
+            cashtoken.subtract_output(
+                PreparedOutput(
+                    b"",
+                    500,
+                    CashTokens(
+                        "category4", NFTCapability["minting"], b"commitment", None
+                    ),
+                )
             )
 
         # simple subtraction
         cashtoken = Unspents([])
         cashtoken.amount = 500
-        cashtoken.subtract_output((b"", 500, None, None, None, None))
+        cashtoken.subtract_output(
+            PreparedOutput(b"", 500, CashTokens(None, None, None, None))
+        )
         assert cashtoken.amount == 0
 
         # fine tune subtraction
@@ -353,16 +404,24 @@ class TestUnspents:
         cashtoken = Unspents([])
         cashtoken.amount = 1000
         cashtoken.tokendata = tokendata
-        cashtoken.subtract_output((b"", 500, "category", None, None, 50))
+        cashtoken.subtract_output(
+            PreparedOutput(b"", 500, CashTokens("category", None, None, 50))
+        )
         assert cashtoken.tokendata == {"category": {"nft": [{"capability": "none"}]}}
-        cashtoken.subtract_output((b"", 50, "category", "none", None, None))
+        cashtoken.subtract_output(
+            PreparedOutput(
+                b"", 50, CashTokens("category", NFTCapability["none"], None, None)
+            )
+        )
         assert cashtoken.tokendata == {}
 
         tokendata = {"category": {"token_amount": 50}}
         cashtoken = Unspents([])
         cashtoken.amount = 1000
         cashtoken.tokendata = tokendata
-        cashtoken.subtract_output((b"", 500, "category", None, None, 50))
+        cashtoken.subtract_output(
+            PreparedOutput(b"", 500, CashTokens("category", None, None, 50))
+        )
         assert cashtoken.tokendata == {}
 
         tokendata = {
@@ -376,21 +435,39 @@ class TestUnspents:
         cashtoken = Unspents([])
         cashtoken.amount = 1000
         cashtoken.tokendata = tokendata
-        cashtoken.subtract_output((b"", 500, "category", "none", b"commitment", None))
+        cashtoken.subtract_output(
+            PreparedOutput(
+                b"",
+                500,
+                CashTokens("category", NFTCapability["none"], b"commitment", None),
+            )
+        )
         assert cashtoken.tokendata == {"category": {"nft": [{"capability": "none"}]}}
 
         tokendata = {"category": {"nft": [{"capability": "mutable"}]}}
         cashtoken = Unspents([])
         cashtoken.amount = 1000
         cashtoken.tokendata = tokendata
-        cashtoken.subtract_output((b"", 500, "category", "none", b"commitment", None))
+        cashtoken.subtract_output(
+            PreparedOutput(
+                b"",
+                500,
+                CashTokens("category", NFTCapability["none"], b"commitment", None),
+            )
+        )
         assert cashtoken.tokendata == {}
 
         tokendata = {"category": {"nft": [{"capability": "minting"}]}}
         cashtoken = Unspents([])
         cashtoken.amount = 1000
         cashtoken.tokendata = tokendata
-        cashtoken.subtract_output((b"", 500, "category", "none", b"commitment", None))
+        cashtoken.subtract_output(
+            PreparedOutput(
+                b"",
+                500,
+                CashTokens("category", NFTCapability["none"], b"commitment", None),
+            )
+        )
         assert cashtoken.tokendata == tokendata
 
         tokendata = {"category": {"nft": [{"capability": "mutable"}]}}
@@ -398,7 +475,11 @@ class TestUnspents:
         cashtoken.amount = 1000
         cashtoken.tokendata = tokendata
         cashtoken.subtract_output(
-            (b"", 500, "category", "mutable", b"commitment", None)
+            PreparedOutput(
+                b"",
+                500,
+                CashTokens("category", NFTCapability["mutable"], b"commitment", None),
+            )
         )
         assert cashtoken.tokendata == {}
 
@@ -407,7 +488,11 @@ class TestUnspents:
         cashtoken.amount = 1000
         cashtoken.tokendata = tokendata
         cashtoken.subtract_output(
-            (b"", 500, "category", "mutable", b"commitment", None)
+            PreparedOutput(
+                b"",
+                500,
+                CashTokens("category", NFTCapability["mutable"], b"commitment", None),
+            )
         )
         assert cashtoken.tokendata == tokendata
 
@@ -416,7 +501,11 @@ class TestUnspents:
         cashtoken.amount = 1000
         cashtoken.tokendata = tokendata
         cashtoken.subtract_output(
-            (b"", 500, "category", "minting", b"commitment", None)
+            PreparedOutput(
+                b"",
+                500,
+                CashTokens("category", NFTCapability["minting"], b"commitment", None),
+            )
         )
         assert cashtoken.tokendata == tokendata
 
@@ -436,16 +525,22 @@ class TestUnspents:
             "c4": {"nft": [{"capability": "none"}]},
         }
 
-        cashtokenoutput = [None for i in range(6)]
-        cashtokenoutput[0] = (546, "c1", "mutable", None, None)
-        cashtokenoutput[1] = (546, "c1", "none", b"commitment", None)
-        cashtokenoutput[2] = (546, "c2", "minting", None, 50)
-        cashtokenoutput[3] = (546, "c2", "minting", None, None)
-        cashtokenoutput[4] = (546, "c3", None, None, 50)
-        cashtokenoutput[5] = (546, "c4", "none", None, None)
+        cashtokenoutput = []
+        cashtokenoutput.append(
+            (546, CashTokens("c1", NFTCapability.mutable, None, None))
+        )
+        cashtokenoutput.append(
+            (546, CashTokens("c1", NFTCapability.none, b"commitment", None))
+        )
+        cashtokenoutput.append((546, CashTokens("c2", NFTCapability.minting, None, 50)))
+        cashtokenoutput.append(
+            (546, CashTokens("c2", NFTCapability.minting, None, None))
+        )
+        cashtokenoutput.append((546, CashTokens("c3", None, None, 50)))
+        cashtokenoutput.append((546, CashTokens("c4", NFTCapability.none, None, None)))
         for i in range(6):
             dust = _calculate_dust_value(
-                BITCOIN_CASHADDRESS_CATKN, *cashtokenoutput[i][1:]
+                Address.from_string(BITCOIN_CASHADDRESS_CATKN), *cashtokenoutput[i][1:]
             )
             _ = list(cashtokenoutput[i])
             _[0] = dust
@@ -454,7 +549,9 @@ class TestUnspents:
         cashtoken = Unspents([])
         cashtoken.amount = sum([_[0] for _ in cashtokenoutput])
         cashtoken.tokendata = tokendata
-        (outputs, leftover_amount) = cashtoken.get_outputs(BITCOIN_CASHADDRESS_CATKN)
+        (outputs, leftover_amount) = cashtoken.get_outputs(
+            Address.from_string(BITCOIN_CASHADDRESS_CATKN)
+        )
 
         assert len(outputs) == 6
         assert outputs[0][1:] == cashtokenoutput[0]
@@ -467,10 +564,12 @@ class TestUnspents:
 
         cashtoken = Unspents([])
         cashtoken.amount = 546
-        (outputs, leftover_amount) = cashtoken.get_outputs(BITCOIN_CASHADDRESS_CATKN)
+        (outputs, leftover_amount) = cashtoken.get_outputs(
+            Address.from_string(BITCOIN_CASHADDRESS_CATKN)
+        )
 
         assert len(outputs) == 1
-        assert outputs[0][1:] == (546, None, None, None, None)
+        assert outputs[0][1:] == (546, CashTokens(None, None, None, None))
         assert leftover_amount == 546
 
 
@@ -486,11 +585,17 @@ def test_select_cashtoken_utxo():
     unspent8 = Unspent(50, 1234, "script", "txid", 1, "c1", "mutable", None, 10)
     unspent9 = Unspent(50, 1234, "script", "txid", 1, "c1", None, None, 60)
 
-    output1 = (b"", 512, *("c1", "mutable", None, None))
-    output2 = (b"", 512, *("c1", "none", b"commitment", None))
-    output3 = (b"", 512, *("c2", "minting", None, 50))
-    output4 = (b"", 512, *("c2", None, None, 50))
-    output5 = (b"", 512, *("c1", None, None, 50))
+    output1 = PreparedOutput(
+        b"", 512, CashTokens("c1", NFTCapability["mutable"], None, None)
+    )
+    output2 = PreparedOutput(
+        b"", 512, CashTokens("c1", NFTCapability["none"], b"commitment", None)
+    )
+    output3 = PreparedOutput(
+        b"", 512, CashTokens("c2", NFTCapability["minting"], None, 50)
+    )
+    output4 = PreparedOutput(b"", 512, CashTokens("c2", None, None, 50))
+    output5 = PreparedOutput(b"", 512, CashTokens("c1", None, None, 50))
     outputs = [output1, output2, output3, output4]
 
     # unused unspents
@@ -565,7 +670,8 @@ def test_select_cashtoken_utxo():
     assert unspents == [unspent8] and unspents_used == [unspent7, unspent9]
     # over over over funded
     unspents, unspents_used = select_cashtoken_utxo(
-        [unspent9, unspent8, unspent7], [(b"", 512, "c1", None, None, 75)]
+        [unspent9, unspent8, unspent7],
+        [PreparedOutput(b"", 512, CashTokens("c1", None, None, 75))],
     )
     assert unspents == [] and unspents_used == [unspent7, unspent9, unspent8]
 
@@ -580,5 +686,7 @@ def test_calculate_dust_value():
         b"",
     ]:
         cashtoken = parse_cashtoken_prefix(script)
-        dust = _calculate_dust_value(BITCOIN_CASHADDRESS_CATKN, *cashtoken)
+        dust = _calculate_dust_value(
+            Address.from_string(BITCOIN_CASHADDRESS_CATKN), cashtoken
+        )
         assert dust == 546 + len(script) * 3
