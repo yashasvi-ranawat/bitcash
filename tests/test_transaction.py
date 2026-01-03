@@ -1,3 +1,4 @@
+import typing
 import pytest
 
 from bitcash.exceptions import InsufficientFunds
@@ -13,7 +14,7 @@ from bitcash.transaction import (
 )
 from bitcash.op import OpCodes
 from bitcash.cashaddress import Address
-from bitcash.types import CashTokens, PreparedOutput
+from bitcash.types import CashTokens, NFTCapability, PreparedOutput
 from bitcash.utils import hex_to_bytes
 from bitcash.wallet import PrivateKey
 from .samples import (
@@ -149,8 +150,8 @@ class TestTxIn:
 
     def test_repr(self):
         txin = TxIn(b"script", b"\x06", b"txid", b"\x04", AMOUNT)
-        assert repr(txin) == "TxIn(b'script', {}, b'txid', {}, 0, {})".format(
-            repr(b"\x06"), repr(b"\x04"), repr(b"")
+        assert repr(txin) == "TxIn(b'script', {}, b'txid', {}, {}, {})".format(
+            repr(b"\x06"), repr(b"\x04"), repr(AMOUNT), repr(b"")
         )
 
 
@@ -225,7 +226,7 @@ class TestSanitizeTxData:
 
         assert unspents == unspents_original
         _ = Address.from_string(BITCOIN_CASHADDRESS_COMPRESSED).scriptcode
-        assert outputs == [(_, 2000, None, None, None, None)]
+        assert outputs == [(_, 2000, CashTokens(None, None, None, None))]
 
     def test_combine_remaining(self):
         unspents_original = [Unspent(1000, 0, "", "", 0), Unspent(1000, 0, "", "", 0)]
@@ -446,9 +447,18 @@ class TestSanitizeTxDataCashToken:
         assert unspents == unspents_original
 
         assert len(outputs) == 3
-        assert outputs[0][1:] == (1000, "caff", "none", None, None)
-        assert outputs[1][1:] == (558, "caff", "minting", None, None)
-        assert outputs[2][1:] == (2442, "caf2", "minting", None, None)
+        assert outputs[0][1:] == (
+            1000,
+            CashTokens("caff", NFTCapability.none, None, None),
+        )
+        assert outputs[1][1:] == (
+            558,
+            CashTokens("caff", NFTCapability.minting, None, None),
+        )
+        assert outputs[2][1:] == (
+            2442,
+            CashTokens("caf2", NFTCapability.minting, None, None),
+        )
 
     def test_no_combine(self):
         unspents_original = [
@@ -471,8 +481,11 @@ class TestSanitizeTxDataCashToken:
 
         assert len(unspents) == 2
         assert len(outputs) == 2
-        assert outputs[0][1:] == (1100, "caff", "none", None, None)
-        assert outputs[1] == (script, 900, None, None, None, None)
+        assert outputs[0][1:] == (
+            1100,
+            CashTokens("caff", NFTCapability.none, None, None),
+        )
+        assert outputs[1] == (script, 900, CashTokens(None, None, None, None))
 
     def test_genesis(self):
         unspents_original = [
@@ -495,8 +508,14 @@ class TestSanitizeTxDataCashToken:
         assert len(unspents) == 2
         assert unspents[0] == unspents_original[0]
         assert len(outputs) == 2
-        assert outputs[0][1:] == (800, "cafe", "none", None, None)
-        assert outputs[1][1:] == (1200, "caff", "none", None, None)
+        assert outputs[0][1:] == (
+            800,
+            CashTokens("cafe", NFTCapability.none, None, None),
+        )
+        assert outputs[1][1:] == (
+            1200,
+            CashTokens("caff", NFTCapability.none, None, None),
+        )
 
         # fail genesis
         outputs_original = [
@@ -605,7 +624,8 @@ class TestConstructOutputBlock:
         # Preferable to raise TypeError if string input with custom_pushdata=True.
         with pytest.raises(TypeError):
             construct_output_block(
-                OUTPUTS + [("hello", 0, EMPTY_CASHTOKEN)]
+                OUTPUTS
+                + [PreparedOutput(typing.cast(bytes, "hello"), 0, EMPTY_CASHTOKEN)]
             )  # pyright: ignore
 
 
