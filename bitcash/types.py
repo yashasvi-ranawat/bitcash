@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from enum import Enum
 from typing import Literal, NamedTuple, Optional, Union
+from dataclasses import dataclass
+import typing
 
 from bitcash.exceptions import InvalidCashToken
 
@@ -132,6 +134,83 @@ class PreparedOutput(NamedTuple):
                 bytes.fromhex(serializable[4]) if serializable[4] else None,
                 serializable[5],
             ),
+        )
+
+
+@dataclass
+class TokenData:
+    """
+    Data class for holding token information for a cashtoken category.
+
+    :param token_amount: Fungible token amount of the cashtoken.
+    :param nft: List of NFTData associated with the token.
+    """
+
+    token_amount: Optional[int]
+    nft: Optional[list[NFTData]]
+
+    @classmethod
+    def get_empty(cls) -> TokenData:
+        return cls(
+            token_amount=None,
+            nft=None,
+        )
+
+    def is_empty(self) -> bool:
+        return self.token_amount is None and (self.nft is None or len(self.nft) == 0)
+
+    def to_dict(self) -> dict[str, Union[str, int, list[dict[str, Union[str, bytes]]]]]:
+        dict_: dict[str, Union[str, int, list[dict[str, Union[str, bytes]]]]] = {}
+        if self.token_amount is not None:
+            dict_["token_amount"] = self.token_amount
+        if self.nft is not None:
+            dict_["nft"] = [nft_data.to_dict() for nft_data in self.nft]
+        return dict_
+
+    @classmethod
+    def from_dict(
+        cls, dict_: dict[str, Union[str, int, list[dict[str, Union[str, bytes]]]]]
+    ) -> TokenData:
+        token_amount = typing.cast(Optional[int], dict_.get("token_amount"))
+        nft_list_dict = typing.cast(
+            Optional[list[dict[str, Union[str, bytes]]]], dict_.get("nft")
+        )
+        nft_list = (
+            [NFTData.from_dict(nft_dict) for nft_dict in nft_list_dict]
+            if nft_list_dict
+            else None
+        )
+        return cls(
+            token_amount=token_amount,
+            nft=nft_list,
+        )
+
+
+@dataclass
+class NFTData:
+    """
+    Data class for holding NFT information.
+
+    :param capability: Capability of the non-fungible token.
+    :param commitment: Commitment bytes of the non-fungible token.
+    """
+
+    capability: NFTCapability
+    commitment: Optional[bytes]
+
+    def to_dict(self) -> dict[str, Union[str, bytes]]:
+        dict_: dict[str, Union[str, bytes]] = {"capability": self.capability.name}
+        if self.commitment:
+            dict_["commitment"] = self.commitment
+        return dict_
+
+    @classmethod
+    def from_dict(cls, dict_: dict[str, Union[str, bytes]]) -> NFTData:
+        nft_capability = typing.cast(str, dict_["capability"])
+        nft_commitment = typing.cast(Optional[bytes], dict_.get("commitment"))
+        return cls(
+            capability=NFTCapability[nft_capability],
+            commitment=nft_commitment,
         )
 
 

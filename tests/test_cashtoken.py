@@ -176,6 +176,28 @@ class TestPrepareOutput:
 
 
 class TestUnspents:
+    def test_dict(self):
+        tokendata = {
+            "category1": {
+                "nft": [
+                    {"capability": "mutable"},
+                    {"capability": "none", "commitment": b"commitment"},
+                ]
+            },
+            "category2": {
+                "token_amount": 50,
+                "nft": [{"capability": "minting"}, {"capability": "minting"}],
+            },
+            "category3": {"token_amount": 50},
+            "category4": {"nft": [{"capability": "none"}]},
+        }
+        unspent_dict = {
+            "amount": 1000,
+            "tokendata": tokendata,
+        }
+        unspents = Unspents.from_dict(unspent_dict)
+        assert unspents.to_dict() == unspent_dict
+
     def test_empty(self):
         unspents = [Unspent(1000, 42, "script", "txid", 0)]
         cashtoken = Unspents(unspents)
@@ -193,7 +215,8 @@ class TestUnspents:
             Unspent(1000, 42, "script", "txid", 0, "category2", token_amount=30),
         ]
         cashtoken = Unspents(unspents)
-        assert tokendata == cashtoken.tokendata
+        unspents_dict = cashtoken.to_dict()
+        assert tokendata == unspents_dict["tokendata"]
         assert cashtoken.amount == 3000
 
     def test_multi_nfts(self):
@@ -225,7 +248,8 @@ class TestUnspents:
             ),
         ]
         cashtoken = Unspents(unspents)
-        assert tokendata == cashtoken.tokendata
+        unspents_dict = cashtoken.to_dict()
+        assert tokendata == unspents_dict["tokendata"]
         assert cashtoken.amount == 3000
 
     def test_all(self):
@@ -271,11 +295,11 @@ class TestUnspents:
             ),
         ]
         cashtoken = Unspents(unspents)
-        assert tokendata == cashtoken.tokendata
+        assert tokendata == cashtoken.to_dict()["tokendata"]
         assert cashtoken.amount == 5000
 
     def test_subtract(self):
-        tokendata = {
+        tokendata: dict = {
             "category1": {
                 "nft": [
                     {"capability": "mutable"},
@@ -291,14 +315,16 @@ class TestUnspents:
         }
 
         # No token
-        cashtoken = Unspents([])
-        cashtoken.amount = 1000
-        cashtoken.tokendata = tokendata
+        unspents_data = {
+            "amount": 1000,
+            "tokendata": tokendata,
+        }
+        cashtoken = Unspents.from_dict(unspents_data)
         cashtoken.subtract_output(
             PreparedOutput(b"", 500, CashTokens(None, None, None, None))
         )
         assert cashtoken.amount == 500
-        assert cashtoken.tokendata == tokendata
+        assert cashtoken.to_dict()["tokendata"] == tokendata
 
         # New token
         cashtoken = Unspents(
@@ -313,7 +339,7 @@ class TestUnspents:
             )
         )
         assert cashtoken.amount == 500
-        assert cashtoken.tokendata == {
+        assert cashtoken.to_dict()["tokendata"] == {
             "category1": {"nft": [{"capability": "minting"}]}
         }
 
@@ -332,9 +358,11 @@ class TestUnspents:
                     CashTokens("category_new", NFTCapability["none"], None, 30),
                 )
             )
-        cashtoken = Unspents([])
-        cashtoken.amount = 1000
-        cashtoken.tokendata = tokendata
+        unspents_dict = {
+            "amount": 1000,
+            "tokendata": tokendata,
+        }
+        cashtoken = Unspents.from_dict(unspents_dict)
         # category does not exist
         with pytest.raises(InsufficientFunds):
             cashtoken.subtract_output(
@@ -401,13 +429,17 @@ class TestUnspents:
 
         # fine tune subtraction
         tokendata = {"category": {"token_amount": 50, "nft": [{"capability": "none"}]}}
-        cashtoken = Unspents([])
-        cashtoken.amount = 1000
-        cashtoken.tokendata = tokendata
+        unspents_dict = {
+            "amount": 1000,
+            "tokendata": tokendata,
+        }
+        cashtoken = Unspents.from_dict(unspents_dict)
         cashtoken.subtract_output(
             PreparedOutput(b"", 500, CashTokens("category", None, None, 50))
         )
-        assert cashtoken.tokendata == {"category": {"nft": [{"capability": "none"}]}}
+        assert cashtoken.to_dict()["tokendata"] == {
+            "category": {"nft": [{"capability": "none"}]}
+        }
         cashtoken.subtract_output(
             PreparedOutput(
                 b"", 50, CashTokens("category", NFTCapability["none"], None, None)
@@ -416,9 +448,11 @@ class TestUnspents:
         assert cashtoken.tokendata == {}
 
         tokendata = {"category": {"token_amount": 50}}
-        cashtoken = Unspents([])
-        cashtoken.amount = 1000
-        cashtoken.tokendata = tokendata
+        unspents_dict = {
+            "amount": 1000,
+            "tokendata": tokendata,
+        }
+        cashtoken = Unspents.from_dict(unspents_dict)
         cashtoken.subtract_output(
             PreparedOutput(b"", 500, CashTokens("category", None, None, 50))
         )
@@ -432,9 +466,11 @@ class TestUnspents:
                 ]
             }
         }
-        cashtoken = Unspents([])
-        cashtoken.amount = 1000
-        cashtoken.tokendata = tokendata
+        unspents_dict = {
+            "amount": 1000,
+            "tokendata": tokendata,
+        }
+        cashtoken = Unspents.from_dict(unspents_dict)
         cashtoken.subtract_output(
             PreparedOutput(
                 b"",
@@ -442,12 +478,16 @@ class TestUnspents:
                 CashTokens("category", NFTCapability["none"], b"commitment", None),
             )
         )
-        assert cashtoken.tokendata == {"category": {"nft": [{"capability": "none"}]}}
+        assert cashtoken.to_dict()["tokendata"] == {
+            "category": {"nft": [{"capability": "none"}]}
+        }
 
         tokendata = {"category": {"nft": [{"capability": "mutable"}]}}
-        cashtoken = Unspents([])
-        cashtoken.amount = 1000
-        cashtoken.tokendata = tokendata
+        unspents_dict = {
+            "amount": 1000,
+            "tokendata": tokendata,
+        }
+        cashtoken = Unspents.from_dict(unspents_dict)
         cashtoken.subtract_output(
             PreparedOutput(
                 b"",
@@ -458,9 +498,11 @@ class TestUnspents:
         assert cashtoken.tokendata == {}
 
         tokendata = {"category": {"nft": [{"capability": "minting"}]}}
-        cashtoken = Unspents([])
-        cashtoken.amount = 1000
-        cashtoken.tokendata = tokendata
+        unspents_dict = {
+            "amount": 1000,
+            "tokendata": tokendata,
+        }
+        cashtoken = Unspents.from_dict(unspents_dict)
         cashtoken.subtract_output(
             PreparedOutput(
                 b"",
@@ -468,12 +510,14 @@ class TestUnspents:
                 CashTokens("category", NFTCapability["none"], b"commitment", None),
             )
         )
-        assert cashtoken.tokendata == tokendata
+        assert cashtoken.to_dict()["tokendata"] == tokendata
 
         tokendata = {"category": {"nft": [{"capability": "mutable"}]}}
-        cashtoken = Unspents([])
-        cashtoken.amount = 1000
-        cashtoken.tokendata = tokendata
+        unspents_dict = {
+            "amount": 1000,
+            "tokendata": tokendata,
+        }
+        cashtoken = Unspents.from_dict(unspents_dict)
         cashtoken.subtract_output(
             PreparedOutput(
                 b"",
@@ -484,9 +528,11 @@ class TestUnspents:
         assert cashtoken.tokendata == {}
 
         tokendata = {"category": {"nft": [{"capability": "minting"}]}}
-        cashtoken = Unspents([])
-        cashtoken.amount = 1000
-        cashtoken.tokendata = tokendata
+        unspents_dict = {
+            "amount": 1000,
+            "tokendata": tokendata,
+        }
+        cashtoken = Unspents.from_dict(unspents_dict)
         cashtoken.subtract_output(
             PreparedOutput(
                 b"",
@@ -494,12 +540,14 @@ class TestUnspents:
                 CashTokens("category", NFTCapability["mutable"], b"commitment", None),
             )
         )
-        assert cashtoken.tokendata == tokendata
+        assert cashtoken.to_dict()["tokendata"] == tokendata
 
         tokendata = {"category": {"nft": [{"capability": "minting"}]}}
-        cashtoken = Unspents([])
-        cashtoken.amount = 1000
-        cashtoken.tokendata = tokendata
+        unspents_dict = {
+            "amount": 1000,
+            "tokendata": tokendata,
+        }
+        cashtoken = Unspents.from_dict(unspents_dict)
         cashtoken.subtract_output(
             PreparedOutput(
                 b"",
@@ -507,7 +555,7 @@ class TestUnspents:
                 CashTokens("category", NFTCapability["minting"], b"commitment", None),
             )
         )
-        assert cashtoken.tokendata == tokendata
+        assert cashtoken.to_dict()["tokendata"] == tokendata
 
     def test_get_outputs(self):
         tokendata = {
@@ -546,9 +594,11 @@ class TestUnspents:
             _[0] = dust
             cashtokenoutput[i] = tuple(_)
 
-        cashtoken = Unspents([])
-        cashtoken.amount = sum([_[0] for _ in cashtokenoutput])
-        cashtoken.tokendata = tokendata
+        unspents_dict = {
+            "amount": sum([_[0] for _ in cashtokenoutput]),
+            "tokendata": tokendata,
+        }
+        cashtoken = Unspents.from_dict(unspents_dict)
         (outputs, leftover_amount) = cashtoken.get_outputs(
             Address.from_string(BITCOIN_CASHADDRESS_CATKN)
         )

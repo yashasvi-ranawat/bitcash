@@ -18,7 +18,7 @@ from bitcash.network import NetworkAPI, satoshi_to_currency_cached
 from bitcash.network.meta import Unspent
 from bitcash.op import OpCodes
 from bitcash.transaction import calc_txid, create_p2pkh_transaction, sanitize_tx_data
-from bitcash.types import Network, PreparedOutput, UserOutput
+from bitcash.types import Network, PreparedOutput, TokenData, UserOutput
 
 DEFAULT_FEE = 1
 
@@ -162,10 +162,10 @@ class PrivateKey(BaseKey):
         self._address = None
         self._scriptcode = None
         self._network = Network[network]
-        self.balance = 0
-        self.cashtoken_balance = {}
-        self.unspents = []
-        self.transactions = []
+        self.balance: int = 0
+        self.cashtoken_balance: dict[str, TokenData] = {}
+        self.unspents: list[Unspent] = []
+        self.transactions: list[str] = []
 
     @property
     def address(self) -> str:
