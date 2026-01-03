@@ -15,6 +15,7 @@ class Network(Enum):
     The names are the versions used in bitcash, and the values are the network names
     in Bitcoin Cash.
     """
+
     main = "mainnet"
     test = "testnet"
     regtest = "regtest"
@@ -107,12 +108,16 @@ class PreparedOutput(NamedTuple):
             self.scriptcode.hex(),
             self.amount,
             self.cashtokens.category_id,
-            self.cashtokens.nft_capability.name
-            if self.cashtokens.nft_capability
-            else None,
-            self.cashtokens.nft_commitment.hex()
-            if self.cashtokens.nft_commitment
-            else None,
+            (
+                self.cashtokens.nft_capability.name
+                if self.cashtokens.nft_capability
+                else None
+            ),
+            (
+                self.cashtokens.nft_commitment.hex()
+                if self.cashtokens.nft_commitment
+                else None
+            ),
             self.cashtokens.token_amount,
         )
 

@@ -71,12 +71,12 @@ class TxPart:
         self,
         address: Optional[str],
         amount: int,
-        category_id: Optional[str]=None,
-        nft_capability: Optional[str]=None,
-        nft_commitment: Optional[bytes]=None,
-        token_amount: Optional[int]=None,
-        asm: Optional[str]=None,
-        data_hex: Optional[str]=None,
+        category_id: Optional[str] = None,
+        nft_capability: Optional[str] = None,
+        nft_commitment: Optional[bytes] = None,
+        token_amount: Optional[int] = None,
+        asm: Optional[str] = None,
+        data_hex: Optional[str] = None,
     ):
         self.address = address
         self.amount = amount

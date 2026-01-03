@@ -52,9 +52,9 @@ class Unspent:
         self.txindex = txindex
         self.cashtoken = CashTokens(
             category_id=category_id,
-            nft_capability=NFTCapability[nft_capability]
-            if nft_capability is not None
-            else None,
+            nft_capability=(
+                NFTCapability[nft_capability] if nft_capability is not None else None
+            ),
             nft_commitment=nft_commitment,
             token_amount=token_amount,
         )
@@ -67,12 +67,16 @@ class Unspent:
             "txid": self.txid,
             "txindex": self.txindex,
             "category_id": self.cashtoken.category_id,
-            "nft_capability": self.cashtoken.nft_capability.name
-            if self.cashtoken.nft_capability
-            else None,
-            "nft_commitment": self.cashtoken.nft_commitment.hex()
-            if self.cashtoken.nft_commitment
-            else None,
+            "nft_capability": (
+                self.cashtoken.nft_capability.name
+                if self.cashtoken.nft_capability
+                else None
+            ),
+            "nft_commitment": (
+                self.cashtoken.nft_commitment.hex()
+                if self.cashtoken.nft_commitment
+                else None
+            ),
             "token_amount": self.cashtoken.token_amount,
         }
         return dict_

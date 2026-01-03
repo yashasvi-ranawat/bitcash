@@ -337,7 +337,7 @@ def parse_cashaddress(data: str) -> tuple[Optional[Address], dict]:
     return address, query
 
 
-def generate_cashaddress(address: str, params: Optional[dict[str, Any]]=None) -> str:
+def generate_cashaddress(address: str, params: Optional[dict[str, Any]] = None) -> str:
     """Generates cashaddress uri from address and params
 
     :param address: cashaddress

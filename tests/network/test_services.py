@@ -18,7 +18,6 @@ from bitcash.network.services import (
     set_service_timeout,
 )
 from bitcash.network.transaction import Transaction
-from bitcash.types import Network
 from tests.samples import (
     VALID_BITCOINCOM_ENDPOINT_URLS,
     INVALID_BITCOINCOM_ENDPOINT_URLS,

@@ -604,7 +604,9 @@ class TestConstructOutputBlock:
     def test_string_pushdata(self):
         # Preferable to raise TypeError if string input with custom_pushdata=True.
         with pytest.raises(TypeError):
-            construct_output_block(OUTPUTS + [("hello", 0, EMPTY_CASHTOKEN)])  # pyright: ignore
+            construct_output_block(
+                OUTPUTS + [("hello", 0, EMPTY_CASHTOKEN)]
+            )  # pyright: ignore
 
 
 def test_construct_input_block():

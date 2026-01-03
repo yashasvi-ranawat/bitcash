@@ -2,7 +2,7 @@ import decimal
 import functools
 import time
 from binascii import hexlify
-from typing import Any, Generator, Literal, Sequence, TypeVar, Union
+from typing import Generator, Literal, Union
 
 
 class Decimal(decimal.Decimal):
