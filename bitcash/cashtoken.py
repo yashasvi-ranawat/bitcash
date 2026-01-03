@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import io
-from typing import Optional, Sequence, Union
-import typing
+from typing import Optional, Sequence
 
 from bitcash.cashaddress import Address
 from bitcash.exceptions import InsufficientFunds, InvalidAddress
@@ -190,10 +189,10 @@ class Unspents:
     """
 
     def __init__(self, unspents: Optional[list[Unspent]] = None):
-        self.amount = 0
+        self.amount: int = 0
         self.tokendata: dict[str, TokenData] = {}
         # unspent txid that are valid genesis unspent
-        self.genesis_unspent_txid = []
+        self.genesis_unspent_txid: list[str] = []
         if unspents is not None:
             for unspent in unspents:
                 self.add_unspent(unspent)
@@ -465,10 +464,10 @@ def select_cashtoken_utxo(
     :param outputs: List of prepared outputs to cover cashtokens of
     :returns: Tuple of leftover unspents and unspents used to cover given outputs
     """
-    unspents_used = []
+    unspents_used: list[Unspent] = []
 
     # if category id is txid of genesis unspent, then the unspent is mandatory
-    mandatory_unspent_indices = set()
+    mandatory_unspent_indices: set[int] = set()
     genesis_unspent_txid = {
         unspent.txid: i for i, unspent in enumerate(unspents) if unspent.txindex == 0
     }
@@ -506,7 +505,7 @@ def select_cashtoken_utxo(
     # add utxo that can fund the output tokendata
     # split unspent with cashtoken from rest
     unspents_cashtoken: list[Unspent] = []
-    pop_ids = []
+    pop_ids: list[int] = []
     for i, unspent in enumerate(unspents):
         if unspent.has_cashtoken:
             unspents_cashtoken.append(unspent)

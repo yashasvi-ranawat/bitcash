@@ -91,6 +91,11 @@ class CashTokens(NamedTuple):
             raise InvalidCashToken(f"1 <= valid token amount <= {MAX_TOKEN_AMOUNT}")
 
 
+SerializedOutput = tuple[
+    str, int, Optional[str], Optional[str], Optional[str], Optional[int]
+]
+
+
 class PreparedOutput(NamedTuple):
     """
     The prepared output of a transaction.
@@ -103,9 +108,7 @@ class PreparedOutput(NamedTuple):
     amount: int
     cashtokens: CashTokens
 
-    def to_serializable(
-        self,
-    ) -> tuple[str, int, Optional[str], Optional[str], Optional[str], Optional[int]]:
+    def to_serializable(self) -> SerializedOutput:
         return (
             self.scriptcode.hex(),
             self.amount,
@@ -124,7 +127,7 @@ class PreparedOutput(NamedTuple):
         )
 
     @classmethod
-    def from_serializable(cls, serializable: tuple) -> PreparedOutput:
+    def from_serializable(cls, serializable: SerializedOutput) -> PreparedOutput:
         return cls(
             bytes.fromhex(serializable[0]),
             serializable[1],

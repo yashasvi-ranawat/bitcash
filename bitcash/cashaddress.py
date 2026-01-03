@@ -42,7 +42,7 @@ def verify_checksum(prefix: str, payload: list[int]) -> bool:
 
 
 def b32decode(inputs: str) -> list[int]:
-    out = list()
+    out: list[int] = []
     for letter in inputs:
         out.append(CHARSET.find(letter))
     return out
@@ -60,7 +60,7 @@ def convertbits(
 ) -> Optional[list[int]]:
     acc = 0
     bits = 0
-    ret = []
+    ret: list[int] = []
     maxv = (1 << tobits) - 1
     max_acc = (1 << (frombits + tobits - 1)) - 1
     for value in data:
@@ -143,7 +143,7 @@ class Address:
     def __repr__(self):
         return f"Address('{self.cash_address()}')"
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, str):
             return self.cash_address() == other
         elif isinstance(other, Address):
@@ -293,7 +293,7 @@ class Address:
         return cls(version, payload)
 
 
-def parse_cashaddress(data: str) -> tuple[Optional[Address], dict]:
+def parse_cashaddress(data: str) -> tuple[Optional[Address], dict[str, Any]]:
     """Parse CashAddress address URI, with params attached
 
     :param data: Cashaddress uri to be parsed
@@ -369,7 +369,7 @@ def generate_cashaddress(address: str, params: Optional[dict[str, Any]] = None) 
     if params is None:
         return uri.geturl()
 
-    param_list = []
+    param_list: list[tuple[str, Any]] = []
     for key, values in params.items():
         if isinstance(values, str) or not hasattr(values, "__iter__"):
             values = [values]

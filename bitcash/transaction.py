@@ -278,7 +278,7 @@ def construct_output_block(outputs: Sequence[PreparedOutput]) -> bytes:
     return output_block
 
 
-def construct_input_block(inputs):
+def construct_input_block(inputs: list[TxIn]) -> bytes:
     input_block = b""
     sequence = SEQUENCE
 

@@ -220,7 +220,7 @@ class PrivateKey(BaseKey):
         _ = self.get_unspents()
         return self.balance_as(currency)
 
-    def get_cashtokenbalance(self) -> dict:
+    def get_cashtokenbalance(self) -> dict[str, TokenData]:
         """Fetches the current cashtoken balance by calling
         :func:`~bitcash.PrivateKey.get_balance` and returns it as
         a token dictionary.
@@ -545,7 +545,11 @@ class PrivateKeyTestnet(PrivateKey):
     :raises TypeError: If ``wif`` is not a ``str``.
     """
 
-    def __init__(self, wif=None, network="test"):
+    def __init__(
+        self,
+        wif: Union[str, ECPrivateKey, None] = None,
+        network: Union[Literal["main"], Literal["test"], Literal["regtest"]] = "test",
+    ):
         super().__init__(wif=wif, network=network)
 
     @classmethod
@@ -558,7 +562,7 @@ class PrivateKeyTestnet(PrivateKey):
         return PrivateKeyTestnet(ECPrivateKey.from_hex(hexed))
 
     @classmethod
-    def from_bytes(cls, bytestr):
+    def from_bytes(cls, bytestr: bytes) -> PrivateKeyTestnet:
         """
         :param bytestr: A private key previously encoded as hex.
         :type bytestr: ``bytes``
@@ -609,7 +613,13 @@ class PrivateKeyRegtest(PrivateKey):
     :raises TypeError: If ``wif`` is not a ``str``.
     """
 
-    def __init__(self, wif=None, network="regtest"):
+    def __init__(
+        self,
+        wif: Union[str, ECPrivateKey, None] = None,
+        network: Union[
+            Literal["main"], Literal["test"], Literal["regtest"]
+        ] = "regtest",
+    ):
         super().__init__(wif, network)
 
     @classmethod

@@ -1,5 +1,6 @@
 import decimal
 import functools
+from io import BytesIO
 import time
 from binascii import hexlify
 from typing import Generator, Literal, Union
@@ -21,7 +22,7 @@ def int_to_unknown_bytes(
     return num.to_bytes((num.bit_length() + 7) // 8 or 1, byteorder)
 
 
-def bytes_to_hex(bytestr: bytes, upper=False) -> str:
+def bytes_to_hex(bytestr: bytes, upper: bool = False) -> str:
     hexed = hexlify(bytestr).decode()
     return hexed.upper() if upper else hexed
 
@@ -33,7 +34,7 @@ def hex_to_bytes(hexed: str) -> bytes:
     return bytes.fromhex(hexed)
 
 
-def int_to_hex(num: int, upper=False) -> str:
+def int_to_hex(num: int, upper: bool = False) -> str:
     hexed = hex(num)[2:]
     return hexed.upper() if upper else hexed
 
@@ -57,12 +58,11 @@ def int_to_varint(val: int) -> bytes:
         return b"\xff" + val.to_bytes(8, "little")
 
 
-def varint_to_int(val):
+def varint_to_int(val: BytesIO) -> int:
     """
     Converts varint to int from incoming bytestream.
 
     :param val: the bytecode starting with varint
-    :type val: ``io.BytesIO``
     :returns: ``int``
     """
     start_byte = val.read(1)

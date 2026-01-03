@@ -37,7 +37,7 @@ THREADWORKERS = 6
 BCH_TO_SAT_MULTIPLIER = 100000000
 
 
-def set_service_timeout(seconds):
+def set_service_timeout(seconds: int) -> None:
     global DEFAULT_TIMEOUT
     DEFAULT_TIMEOUT = seconds
 
@@ -137,10 +137,10 @@ def get_sanitized_endpoints_for(network: NetworkStr = "mainnet") -> tuple[BaseAP
     class ThreadedGetBlockheight:
         def __init__(self, endpoints: tuple[BaseAPI, ...]):
             self.endpoints = endpoints
-            self.endpoints_blockheight = [0 for _ in range(len(endpoints))]
+            self.endpoints_blockheight: list[int] = [0 for _ in range(len(endpoints))]
             self._lock = threading.Lock()
 
-        def update(self, ind):
+        def update(self, ind: int) -> None:
             try:
                 blockheight = self.endpoints[ind].get_blockheight(
                     timeout=DEFAULT_TIMEOUT
@@ -163,7 +163,7 @@ def get_sanitized_endpoints_for(network: NetworkStr = "mainnet") -> tuple[BaseAP
 
     # remove unreachable or un-synced endpoints
     highest_blockheight = max(endpoints_blockheight)
-    pop_indices = []
+    pop_indices: list[int] = []
     for i in range(len(endpoints)):
         if endpoints_blockheight[i] != highest_blockheight:
             pop_indices.append(i)
