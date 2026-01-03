@@ -10,5 +10,5 @@ jobs:
       # clone repo and check out
       - uses: actions/checkout@v3
 
-      - name: Check that all Python code is linted with black
-        run: pip install black && black . --check
+      - name: Check that all Python code is linted with black and typehints are checked with pyright
+        run: pip install black pyright && black . --check && pyright
