@@ -3,12 +3,13 @@ import json
 import socket
 import ssl
 from decimal import Decimal
+import threading
 import typing
 from requests.exceptions import ConnectTimeout, ContentDecodingError
-from typing import Any, Union
+from typing import Any, Callable, Union
 
 from bitcash.exceptions import InvalidEndpointURLProvided
-from bitcash.network.APIs import BaseAPI
+from bitcash.network.APIs import BaseAPI, SubscriptionHandle
 from bitcash.network.meta import Unspent
 from bitcash.network.transaction import Transaction, TxPart
 from bitcash.cashaddress import Address
@@ -324,3 +325,63 @@ class FulcrumProtocolAPI(BaseAPI):
             self.sock, "blockchain.transaction.broadcast", [tx_hex]
         )
         return True
+
+    def subscribe_address(
+        self, address: str, callback: Callable[[str, str], None], *args, **kwargs
+    ) -> SubscriptionHandle:
+        """
+        Subscribe to an address and receive real-time notifications.
+        :param address: Address to subscribe to.
+        :param callback: Function to call with (address, status_hash) on update.
+        :return: A SubscriptionHandle object for managing the subscription.
+        """
+        # Create a new socket for subscription
+        sub_sock = handshake(self.hostname, self.port, self.timeout)
+        sub_sock.settimeout(None)  # set to blocking mode for subscription
+        stop_event = threading.Event()
+
+        def listen():
+            # Send subscription request
+            payload = {
+                "method": "blockchain.address.subscribe",
+                "params": [address],
+                "jsonrpc": "2.0",
+                "id": "bitcash-sub",
+            }
+            sub_sock.sendall(json.dumps(payload).encode() + b"\n")
+            buffer = b""
+            while not stop_event.is_set():
+                try:
+                    buffer += sub_sock.recv(4096)
+                    while b"\n" in buffer:
+                        line, buffer = buffer.split(b"\n", 1)
+                        if not line:
+                            continue
+                        msg = json.loads(line.decode())
+                        # Initial response or notification
+                        if (
+                            msg.get("method") == "blockchain.address.subscribe"
+                            or msg.get("id") == "bitcash-sub"
+                        ):
+                            status = (
+                                msg.get("params", [None, None])[1]
+                                if "method" in msg
+                                else msg.get("result")
+                            )
+                            callback(address, status)
+                except (OSError, ValueError) as e:
+                    callback(address, f"error: {str(e)}")
+                    break
+            sub_sock.close()
+
+        thread = threading.Thread(target=listen, daemon=True)
+        thread.start()
+
+        def stop_subscription():
+            stop_event.set()
+            try:
+                sub_sock.shutdown(socket.SHUT_RDWR)
+            except Exception:
+                pass
+
+        return SubscriptionHandle(stop_subscription)

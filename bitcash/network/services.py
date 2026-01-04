@@ -3,11 +3,11 @@ import socket
 import ssl
 import os
 import threading
-from typing import Any
+from typing import Any, Callable
 
 import requests
 
-from bitcash.network.APIs import BaseAPI
+from bitcash.network.APIs import BaseAPI, SubscriptionHandle
 
 # Import supported endpoint APIs
 from bitcash.network.APIs.BitcoinDotComAPI import BitcoinDotComAPI
@@ -348,4 +348,31 @@ class NetworkAPI:
                 "Transaction broadcast failed, or Unspents were already used."
             )
 
+        raise ConnectionError("All APIs are unreachable.")
+
+    @classmethod
+    def subscribe_address(
+        cls,
+        address: str,
+        callback: Callable[[str, str], None],
+        network: NetworkStr = "mainnet",
+    ) -> SubscriptionHandle:
+        """Subscribes an address for push notifications.
+
+        :param address: The address in question.
+        :param callback: Function to call with (address, status_hash) on update.
+        :returns: True if subscription was successful, False otherwise.
+        :raises ConnectionError: If all API services fail.
+        """
+
+        for endpoint in get_sanitized_endpoints_for(network):
+            if isinstance(endpoint, (ChaingraphAPI, BitcoinDotComAPI)):
+                # ChaingraphAPI and BitcoinDotComAPI do not support address subscriptions
+                continue
+            try:
+                return endpoint.subscribe_address(
+                    address, callback, timeout=DEFAULT_TIMEOUT
+                )
+            except cls.IGNORED_ERRORS:
+                pass
         raise ConnectionError("All APIs are unreachable.")

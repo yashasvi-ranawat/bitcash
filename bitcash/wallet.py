@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Literal, Optional, Sequence, Union
+from typing import Callable, Literal, Optional, Sequence, Union
 
 from bitcash.cashtoken import Unspents
 from bitcash.crypto import ECPrivateKey
@@ -15,6 +15,7 @@ from bitcash.format import (
     wif_to_bytes,
 )
 from bitcash.network import NetworkAPI, satoshi_to_currency_cached
+from bitcash.network.APIs import SubscriptionHandle
 from bitcash.network.meta import Unspent
 from bitcash.op import OpCodes
 from bitcash.transaction import calc_txid, create_p2pkh_transaction, sanitize_tx_data
@@ -483,6 +484,15 @@ class PrivateKey(BaseKey):
         ]
 
         return create_p2pkh_transaction(self, unspents, outputs)
+
+    def subsribe(self, callback: Callable[[str, str], None]) -> SubscriptionHandle:
+        """
+        Subscribe to this private key's address and receive real-time notifications.
+        :param callback: Function to call with (address, status_hash) on update.
+        """
+        return NetworkAPI.subscribe_address(
+            self.address, callback, network=self._network.value
+        )
 
     @classmethod
     def from_hex(cls, hexed: str) -> PrivateKey:

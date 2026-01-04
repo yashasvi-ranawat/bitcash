@@ -1,7 +1,7 @@
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 from bitcash.network.http import session
 from bitcash.exceptions import InvalidEndpointURLProvided
-from bitcash.network.APIs import BaseAPI
+from bitcash.network.APIs import BaseAPI, SubscriptionHandle
 from bitcash.network.meta import Unspent
 from bitcash.network.transaction import Transaction, TxPart
 from bitcash.cashaddress import Address
@@ -475,3 +475,10 @@ mutation BroadcastTx($tx_hex: String!, $node: bigint!){
             if json["transmission_success"] and json["validation_success"]:
                 return True
         return False
+
+    def subscribe_address(
+        self, address: str, callback: Callable[[str, str], None], *args, **kwargs
+    ) -> SubscriptionHandle:
+        raise NotImplementedError(
+            "ChaingraphAPI does not support address subscriptions at this time."
+        )
