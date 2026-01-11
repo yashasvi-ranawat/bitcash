@@ -179,6 +179,7 @@ def get_sanitized_endpoints_for(network: NetworkStr = "mainnet") -> tuple[BaseAP
 
 class NetworkAPI:
     IGNORED_ERRORS = (
+        NotImplementedError,
         requests.exceptions.RequestException,
         requests.exceptions.HTTPError,
         requests.exceptions.ConnectionError,
@@ -361,14 +362,11 @@ class NetworkAPI:
 
         :param address: The address in question.
         :param callback: Function to call with (address, status_hash) on update.
-        :returns: True if subscription was successful, False otherwise.
+        :returns: A SubscriptionHandle to manage the subscription.
         :raises ConnectionError: If all API services fail.
         """
 
         for endpoint in get_sanitized_endpoints_for(network):
-            if isinstance(endpoint, (ChaingraphAPI, BitcoinDotComAPI)):
-                # ChaingraphAPI and BitcoinDotComAPI do not support address subscriptions
-                continue
             try:
                 return endpoint.subscribe_address(
                     address, callback, timeout=DEFAULT_TIMEOUT

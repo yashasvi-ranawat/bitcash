@@ -375,6 +375,8 @@ class FulcrumProtocolAPI(BaseAPI):
                     callback(address, f"error: {str(e)}")
                     break
             sub_sock.close()
+            # Notify that subscription has ended
+            callback(address, "unsubscribed")
 
         thread = threading.Thread(target=listen, daemon=True)
         thread.start()

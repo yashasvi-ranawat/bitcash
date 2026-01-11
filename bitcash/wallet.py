@@ -488,7 +488,19 @@ class PrivateKey(BaseKey):
     def subsribe(self, callback: Callable[[str, str], None]) -> SubscriptionHandle:
         """
         Subscribe to this private key's address and receive real-time notifications.
+
         :param callback: Function to call with (address, status_hash) on update.
+
+        Reserved status_hash values:
+            - "error: <message>": An error occurred.
+            - "unsubscribed": Subscription has been cancelled.
+
+        Note:
+        1. The subscription callback will be called immediately when the subscription is
+           created with the current status hash.
+        2. The remote server may send a status hash even before updating the UTXOs. Thus,
+           it is recommended to wait a few seconds after receiving a notification before
+           fetching the updated UTXOs.
         """
         return NetworkAPI.subscribe_address(
             self.address, callback, network=self._network.value
