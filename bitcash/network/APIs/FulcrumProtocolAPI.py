@@ -89,14 +89,15 @@ def send_json_rpc_payload(
 def check_stale_sock(fn):
     @wraps(fn)
     def wrapper(self, *args, **kwargs):
-        if self.sock is None:
-            self.sock = handshake(self.hostname, self.port, self.timeout)
-        try:
-            result = fn(self, *args, **kwargs)
-        except ConnectTimeout:
-            self.sock = handshake(self.hostname, self.port, self.timeout)
-            result = fn(self, *args, **kwargs)
-        return result
+        with self._sock_lock:
+            if self.sock is None:
+                self.sock = handshake(self.hostname, self.port, self.timeout)
+            try:
+                result = fn(self, *args, **kwargs)
+            except ConnectTimeout:
+                self.sock = handshake(self.hostname, self.port, self.timeout)
+                result = fn(self, *args, **kwargs)
+            return result
 
     return wrapper
 
@@ -142,6 +143,7 @@ class FulcrumProtocolAPI(BaseAPI):
 
         self.timeout = timeout
         self.sock: Union[None, socket.socket, ssl.SSLSocket] = None
+        self._sock_lock = threading.Lock()
 
     @classmethod
     def get_default_endpoints(cls, network: NetworkStr) -> list[str]:
