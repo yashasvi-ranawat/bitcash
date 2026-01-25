@@ -3,8 +3,9 @@ from coincurve import verify_signature as _vs
 from bitcash.base58 import b58decode_check, b58encode_check
 from bitcash.cashaddress import Address
 from bitcash.crypto import ripemd160_sha256
-from bitcash.curve import x_to_y
+from bitcash.curve import Point, x_to_y
 from bitcash.op import OpCodes
+from bitcash.types import Network
 
 MAIN_PUBKEY_HASH = b"\x00"
 MAIN_SCRIPT_HASH = b"\x05"
@@ -30,35 +31,35 @@ PUBLIC_KEY_COMPRESSED_ODD_Y = b"\x03"
 PRIVATE_KEY_COMPRESSED_PUBKEY = b"\x01"
 
 
-def verify_sig(signature, data, public_key):
+def verify_sig(signature: bytes, data: bytes, public_key: bytes) -> bool:
     """Verifies some data was signed by the owner of a public key.
 
     :param signature: The signature to verify.
-    :type signature: ``bytes``
     :param data: The data that was supposedly signed.
-    :type data: ``bytes``
     :param public_key: The public key.
-    :type public_key: ``bytes``
     :returns: ``True`` if all checks pass, ``False`` otherwise.
     """
     return _vs(signature, data, public_key)
 
 
-def address_to_public_key_hash(address):
-    address = Address.from_string(address)
+def address_to_public_key_hash(cash_address: str) -> bytes:
+    address = Address.from_string(cash_address)
 
     if "P2PKH" not in address.version and "P2SH" not in address.version:
         # Bitcash currently only supports P2PKH, P2SH transaction outputs
         # others will raise ValueError
-        raise ValueError("Bitcash currently only supports" " P2PKH/P2SH addresses")
+        raise ValueError("Bitcash currently only supports P2PKH/P2SH addresses")
 
     return bytes(address.payload)
 
 
-def bytes_to_wif(private_key, version="main", compressed=False):
-    if version == "test":
+def bytes_to_wif(
+    private_key: bytes, version: str = "main", compressed: bool = False
+) -> str:
+    network = Network[version]
+    if network == Network.test:
         prefix = TEST_PRIVATE_KEY
-    elif version == "regtest":
+    elif network == Network.regtest:
         prefix = REGTEST_PRIVATE_KEY
     else:
         prefix = MAIN_PRIVATE_KEY
@@ -73,24 +74,23 @@ def bytes_to_wif(private_key, version="main", compressed=False):
     return b58encode_check(private_key)
 
 
-def wif_to_bytes(wif, regtest=False):
+def wif_to_bytes(wif: str, regtest: bool = False) -> tuple[bytes, bool, str]:
     private_key = b58decode_check(wif)
 
     version = private_key[:1]
 
     if version == MAIN_PRIVATE_KEY:
-        version = "main"
+        version = Network.main.name
     elif version == TEST_PRIVATE_KEY:
         # Regtest and testnet WIF formats are identical, so we
         # check the 'regtest' flag and manually set the version
         if regtest:
-            version = "regtest"
+            version = Network.regtest.name
         else:
-            version = "test"
+            version = Network.test.name
     else:
         raise ValueError(
-            f"{version} does not correspond to a mainnet,"
-            f"testnet, nor regtest address."
+            f"{version} does not correspond to a mainnet,testnet, nor regtest address."
         )
 
     # Remove version byte and, if present, compression flag.
@@ -102,7 +102,7 @@ def wif_to_bytes(wif, regtest=False):
     return private_key, compressed, version
 
 
-def wif_checksum_check(wif):
+def wif_checksum_check(wif: str) -> bool:
     try:
         decoded = b58decode_check(wif)
     except ValueError:
@@ -114,7 +114,7 @@ def wif_checksum_check(wif):
     return False
 
 
-def public_key_to_address(public_key, version="main"):
+def public_key_to_address(public_key: bytes, version: str = "main") -> str:
     # Currently Bitcash only support P2PKH (not P2SH) utxos
     VERSIONS = {"main": "P2PKH", "test": "P2PKH-TESTNET", "regtest": "P2PKH-REGTEST"}
 
@@ -132,17 +132,19 @@ def public_key_to_address(public_key, version="main"):
     return address.cash_address()
 
 
-def public_key_to_coords(public_key):
+def public_key_to_coords(public_key: bytes) -> tuple[int, int]:
     length = len(public_key)
 
     if length == 33:
-        flag, x = int.from_bytes(public_key[:1], "big"), int.from_bytes(
-            public_key[1:], "big"
+        flag, x = (
+            int.from_bytes(public_key[:1], "big"),
+            int.from_bytes(public_key[1:], "big"),
         )
         y = x_to_y(x, flag & 1)
     elif length == 65:
-        x, y = int.from_bytes(public_key[1:33], "big"), int.from_bytes(
-            public_key[33:], "big"
+        x, y = (
+            int.from_bytes(public_key[1:33], "big"),
+            int.from_bytes(public_key[33:], "big"),
         )
     else:
         raise ValueError(f"{length} is an invalid length for a public key.")
@@ -150,55 +152,51 @@ def public_key_to_coords(public_key):
     return x, y
 
 
-def coords_to_public_key(x, y, compressed=True):
+def coords_to_public_key(x: int, y: int, compressed: bool = True) -> bytes:
     if compressed:
-        y = PUBLIC_KEY_COMPRESSED_ODD_Y if y & 1 else PUBLIC_KEY_COMPRESSED_EVEN_Y
-        return y + x.to_bytes(32, "big")
+        y_bytes = PUBLIC_KEY_COMPRESSED_ODD_Y if y & 1 else PUBLIC_KEY_COMPRESSED_EVEN_Y
+        return y_bytes + x.to_bytes(32, "big")
 
     return PUBLIC_KEY_UNCOMPRESSED + x.to_bytes(32, "big") + y.to_bytes(32, "big")
 
 
-def point_to_public_key(point, compressed=True):
+def point_to_public_key(point: Point, compressed: bool = True) -> bytes:
     return coords_to_public_key(point.x, point.y, compressed)
 
 
-def address_to_cashtokenaddress(address):
+def address_to_cashtokenaddress(address: str) -> str:
     """
     Converts regular cashaddress to cashtoken signalling address
 
     :param address: Cashaddress
-    :type address: ``str``
     :returns: Cashtoken signalling cashaddress
-    :rtype: ``str``
     """
-    address = Address.from_string(address)
-    if "CATKN" in address.version:
-        return address.cash_address()
-    version = address.version.split("-")
+    cash_address = Address.from_string(address)
+    if "CATKN" in cash_address.version:
+        return cash_address.cash_address()
+    version = cash_address.version.split("-")
     version.insert(1, "CATKN")
-    address.version = "-".join(version)
-    return address.cash_address()
+    cash_address.version = "-".join(version)
+    return cash_address.cash_address()
 
 
-def cashtokenaddress_to_address(address):
+def cashtokenaddress_to_address(address: str) -> str:
     """
     Converts cashtoken signalling cashaddress to regular cashaddress
 
     :param address: Cashtoken signalling cashaddress
-    :type address: ``str``
     :returns: Cashaddress
-    :rtype: ``str``
     """
-    address = Address.from_string(address)
-    if "CATKN" not in address.version:
-        return address.cash_address()
-    version = address.version.split("-")
+    cash_address = Address.from_string(address)
+    if "CATKN" not in cash_address.version:
+        return cash_address.cash_address()
+    version = cash_address.version.split("-")
     version.pop(1)
-    address.version = "-".join(version)
-    return address.cash_address()
+    cash_address.version = "-".join(version)
+    return cash_address.cash_address()
 
 
-def hex_to_asm(data):
+def hex_to_asm(data: str) -> str:
     def _add_value(next_len, indx):
         next_len *= 2  # hex byte
         # !TODO: add Signature hash type delineation

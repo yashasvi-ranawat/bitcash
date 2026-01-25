@@ -1,14 +1,21 @@
-import os
-import requests
-import threading
 import concurrent.futures
 import socket
 import ssl
+import os
+import threading
+from typing import Any
+
+import requests
+
+from bitcash.network.APIs import BaseAPI
 
 # Import supported endpoint APIs
 from bitcash.network.APIs.BitcoinDotComAPI import BitcoinDotComAPI
 from bitcash.network.APIs.ChaingraphAPI import ChaingraphAPI
 from bitcash.network.APIs.FulcrumProtocolAPI import FulcrumProtocolAPI
+from bitcash.network.meta import Unspent
+from bitcash.network.transaction import Transaction
+from bitcash.types import Network, NetworkStr
 from bitcash.utils import time_cache
 
 # Dictionary of supported endpoint APIs
@@ -29,15 +36,13 @@ THREADWORKERS = 6
 
 BCH_TO_SAT_MULTIPLIER = 100000000
 
-NETWORKS = {"mainnet", "testnet", "regtest"}
 
-
-def set_service_timeout(seconds):
+def set_service_timeout(seconds: int) -> None:
     global DEFAULT_TIMEOUT
     DEFAULT_TIMEOUT = seconds
 
 
-def get_endpoints_for(network):
+def get_endpoints_for(network: str) -> tuple[BaseAPI, ...]:
     # For each available interface in 'ENDPOINT_ENV_VARIABLES'
     # this function will check, in order, if any env variables
     # have been set for EITHER:
@@ -48,8 +53,9 @@ def get_endpoints_for(network):
     # however many endpoints you'd like.
     # If neither of these env variables have been set, it returns
     # the instantiated result of <NAME>.get_default_endpoints(network)
+    _ = Network(network)  # Validate network input
 
-    endpoints = []
+    endpoints: list[BaseAPI] = []
     for endpoint in ENDPOINT_ENV_VARIABLES.keys():
         if endpoint == "CHAINGRAPH":
             if os.getenv(f"{endpoint}_API".upper()):
@@ -119,21 +125,22 @@ def get_endpoints_for(network):
     return tuple(endpoints)
 
 
-@time_cache(max_age=DEFAULT_SANITIZED_ENDPOINTS_CACHE_TIME, cache_size=len(NETWORKS))
-def get_sanitized_endpoints_for(network="mainnet"):
+@time_cache(max_age=DEFAULT_SANITIZED_ENDPOINTS_CACHE_TIME, cache_size=len(Network))
+def get_sanitized_endpoints_for(network: NetworkStr = "mainnet") -> tuple[BaseAPI, ...]:
     """Gets endpoints sanitized by their blockheights.
     Solves the problem when an endpoint is stuck on an older block.
 
     :param network: network in ["mainnet", "testnet", "regtest"].
+    :returns: A tuple of sanitized endpoints.
     """
 
     class ThreadedGetBlockheight:
-        def __init__(self, endpoints):
+        def __init__(self, endpoints: tuple[BaseAPI, ...]):
             self.endpoints = endpoints
-            self.endpoints_blockheight = [0 for _ in range(len(endpoints))]
+            self.endpoints_blockheight: list[int] = [0 for _ in range(len(endpoints))]
             self._lock = threading.Lock()
 
-        def update(self, ind):
+        def update(self, ind: int) -> None:
             try:
                 blockheight = self.endpoints[ind].get_blockheight(
                     timeout=DEFAULT_TIMEOUT
@@ -156,7 +163,7 @@ def get_sanitized_endpoints_for(network="mainnet"):
 
     # remove unreachable or un-synced endpoints
     highest_blockheight = max(endpoints_blockheight)
-    pop_indices = []
+    pop_indices: list[int] = []
     for i in range(len(endpoints)):
         if endpoints_blockheight[i] != highest_blockheight:
             pop_indices.append(i)
@@ -202,13 +209,12 @@ class NetworkAPI:
     )
 
     @classmethod
-    def get_balance(cls, address, network="mainnet"):
+    def get_balance(cls, address: str, network: NetworkStr = "mainnet") -> int:
         """Gets the balance of an address in satoshi.
 
         :param address: The address in question.
-        :type address: ``str``
+        :returns: The balance in satoshi.
         :raises ConnectionError: If all API services fail.
-        :rtype: ``int``
         """
         for endpoint in get_sanitized_endpoints_for(network):
             try:
@@ -219,13 +225,14 @@ class NetworkAPI:
         raise ConnectionError("All APIs are unreachable.")  # pragma: no cover
 
     @classmethod
-    def get_transactions(cls, address, network="mainnet"):
+    def get_transactions(
+        cls, address: str, network: NetworkStr = "mainnet"
+    ) -> list[str]:
         """Gets the ID of all transactions related to an address.
 
         :param address: The address in question.
-        :type address: ``str``
+        :returns: A list of transaction ids.
         :raises ConnectionError: If all API services fail.
-        :rtype: ``list`` of ``str``
         """
         for endpoint in get_sanitized_endpoints_for(network):
             try:
@@ -236,13 +243,12 @@ class NetworkAPI:
         raise ConnectionError("All APIs are unreachable.")  # pragma: no cover
 
     @classmethod
-    def get_transaction(cls, txid, network="mainnet"):
+    def get_transaction(cls, txid: str, network: NetworkStr = "mainnet") -> Transaction:
         """Gets the full transaction details.
 
         :param txid: The transaction id in question.
-        :type txid: ``str``
+        :returns: The transaction details.
         :raises ConnectionError: If all API services fail.
-        :rtype: ``Transaction``
         """
 
         for endpoint in get_sanitized_endpoints_for(network):
@@ -254,15 +260,15 @@ class NetworkAPI:
         raise ConnectionError("All APIs are unreachable.")  # pragma: no cover
 
     @classmethod
-    def get_tx_amount(cls, txid, txindex, network="mainnet"):
+    def get_tx_amount(
+        cls, txid: str, txindex: int, network: NetworkStr = "mainnet"
+    ) -> int:
         """Gets the amount of a given transaction output.
 
         :param txid: The transaction id in question.
-        :type txid: ``str``
         :param txindex: The transaction index in question.
-        :type txindex: ``int``
+        :returns: The amount in satoshi.
         :raises ConnectionError: If all API services fail.
-        :rtype: ``Decimal``
         """
 
         for endpoint in get_sanitized_endpoints_for(network):
@@ -274,13 +280,15 @@ class NetworkAPI:
         raise ConnectionError("All APIs are unreachable.")  # pragma: no cover
 
     @classmethod
-    def get_unspent(cls, address, network="mainnet"):
+    def get_unspent(
+        cls, address: str, network: NetworkStr = "mainnet"
+    ) -> list[Unspent]:
         """Gets all unspent transaction outputs belonging to an address.
 
         :param address: The address in question.
-        :type address: ``str``
+        :returns: A list of unspent transaction outputs of
+            :class:`~bitcash.network.meta.Unspent`.
         :raises ConnectionError: If all API services fail.
-        :rtype: ``list`` of :class:`~bitcash.network.meta.Unspent`
         """
 
         for endpoint in get_sanitized_endpoints_for(network):
@@ -292,13 +300,14 @@ class NetworkAPI:
         raise ConnectionError("All APIs are unreachable.")  # pragma: no cover
 
     @classmethod
-    def get_raw_transaction(cls, txid, network="mainnet"):
+    def get_raw_transaction(
+        cls, txid: str, network: NetworkStr = "mainnet"
+    ) -> dict[str, Any]:
         """Gets the raw, unparsed transaction details.
 
         :param txid: The transaction id in question.
-        :type txid: ``str``
+        :returns: The raw transaction details.
         :raises ConnectionError: If all API services fail.
-        :rtype: ``Transaction``
         """
 
         for endpoint in get_sanitized_endpoints_for(network):
@@ -310,12 +319,14 @@ class NetworkAPI:
         raise ConnectionError("All APIs are unreachable.")  # pragma: no cover
 
     @classmethod
-    def broadcast_tx(cls, tx_hex, network="mainnet"):  # pragma: no cover
+    def broadcast_tx(
+        cls, tx_hex: str, network: NetworkStr = "mainnet"
+    ):  # pragma: no cover
         """Broadcasts a transaction to the blockchain.
 
         :param tx_hex: A signed transaction in hex form.
-        :type tx_hex: ``str``
         :raises ConnectionError: If all API services fail.
+        :raises RuntimeError: If the transaction broadcast fails.
         """
         success = None
 

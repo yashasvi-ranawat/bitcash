@@ -3,6 +3,8 @@
 
 -e .[cli,cache]
 pytest
+pyright
 coverage
+black
 twine
 sphinx

@@ -11,7 +11,7 @@ BITCOIN_CASHADDRESS_CATKN = "bitcoincash:zrweeythv25ltpdypewr54prs6zd3nr5rcjhrnh
 
 
 def dummy_handshake(hostname: str, port: int, timeout: float):
-    return
+    return "dummy_socket"
 
 
 class DummySendPayload:

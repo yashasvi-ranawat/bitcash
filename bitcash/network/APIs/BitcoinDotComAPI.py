@@ -1,3 +1,4 @@
+from typing import Any
 from bitcash.network.http import session
 from decimal import Decimal
 from bitcash.exceptions import InvalidEndpointURLProvided
@@ -6,6 +7,7 @@ from bitcash.network.APIs import BaseAPI
 from bitcash.network.meta import Unspent
 from bitcash.network.transaction import Transaction, TxPart
 from bitcash.format import cashtokenaddress_to_address
+from bitcash.types import CashTokens, NFTCapability, NetworkStr
 
 # This class is the interface for Bitcash to interact with
 # Bitcoin.com based RESTful interfaces.
@@ -47,19 +49,19 @@ class BitcoinDotComAPI(BaseAPI):
     }
 
     @classmethod
-    def get_default_endpoints(cls, network):
+    def get_default_endpoints(cls, network: NetworkStr) -> list[str]:
         return cls.DEFAULT_ENDPOINTS[network]
 
-    def make_endpoint_url(self, path):
+    def make_endpoint_url(self, path: str) -> str:
         return self.network_endpoint + self.PATHS[path]
 
-    def get_blockheight(self, *args, **kwargs):
+    def get_blockheight(self, *args, **kwargs) -> int:
         api_url = self.make_endpoint_url("block-height")
         r = session.get(api_url, *args, **kwargs)
         r.raise_for_status()
         return r.json()
 
-    def get_balance(self, address, *args, **kwargs):
+    def get_balance(self, address: str, *args, **kwargs) -> int:
         address = cashtokenaddress_to_address(address)
         api_url = self.make_endpoint_url("address").format(address)
         r = session.get(api_url, *args, **kwargs)
@@ -67,14 +69,14 @@ class BitcoinDotComAPI(BaseAPI):
         data = r.json()
         return data["balanceSat"] + data["unconfirmedBalanceSat"]
 
-    def get_transactions(self, address, *args, **kwargs):
+    def get_transactions(self, address: str, *args, **kwargs) -> list[str]:
         address = cashtokenaddress_to_address(address)
         api_url = self.make_endpoint_url("address").format(address)
         r = session.get(api_url, *args, **kwargs)
         r.raise_for_status()
         return r.json()["transactions"]
 
-    def get_transaction(self, txid, *args, **kwargs):
+    def get_transaction(self, txid: str, *args, **kwargs) -> Transaction:
         api_url = self.make_endpoint_url("tx-details").format(txid)
         r = session.get(api_url, *args, **kwargs)
         r.raise_for_status()
@@ -144,7 +146,7 @@ class BitcoinDotComAPI(BaseAPI):
 
         return tx
 
-    def get_tx_amount(self, txid, txindex, *args, **kwargs):
+    def get_tx_amount(self, txid: str, txindex: int, *args, **kwargs) -> int:
         api_url = self.make_endpoint_url("tx-details").format(txid)
         r = session.get(api_url, *args, **kwargs)
         r.raise_for_status()
@@ -155,7 +157,7 @@ class BitcoinDotComAPI(BaseAPI):
             ).to_integral_value()
         )
 
-    def get_unspent(self, address, *args, **kwargs):
+    def get_unspent(self, address: str, *args, **kwargs) -> list[Unspent]:
         return self._get_unspent_cashtoken(address, *args, **kwargs)
         address = cashtokenaddress_to_address(address)
         api_url = self.make_endpoint_url("unspent").format(address)
@@ -190,7 +192,7 @@ class BitcoinDotComAPI(BaseAPI):
             )
         return unspents
 
-    def _get_unspent_cashtoken(self, address, *args, **kwargs):
+    def _get_unspent_cashtoken(self, address: str, *args, **kwargs) -> list[Unspent]:
         """
         Makeshift function to get cashtoken info in unspents by querying tx details.
         Should be deprecated once BitcoinDotComAPI supports cashtokens in unspents
@@ -219,21 +221,29 @@ class BitcoinDotComAPI(BaseAPI):
             txout = response[i]["vout"][unspent.txindex]
             if "tokenData" in txout:
                 token_data = txout["tokenData"]
-                unspent.category_id = token_data["category"]
-                unspent.token_amount = int(token_data["amount"]) or None
+                category_id = token_data["category"]
+                token_amount = int(token_data["amount"]) or None
+                nft_capability = None
+                nft_commitment = None
                 if "nft" in token_data:
-                    unspent.nft_capability = token_data["nft"]["capability"]
+                    nft_capability = token_data["nft"]["capability"]
                     _ = bytes.fromhex(token_data["nft"]["commitment"])
-                    unspent.nft_commitment = _ or None
+                    nft_commitment = _ or None
+                unspent.cashtoken = CashTokens(
+                    category_id,
+                    NFTCapability[nft_capability] if nft_capability else None,
+                    nft_commitment,
+                    token_amount,
+                )
         return unspents
 
-    def get_raw_transaction(self, txid, *args, **kwargs):
+    def get_raw_transaction(self, txid: str, *args, **kwargs) -> dict[str, Any]:
         api_url = self.make_endpoint_url("tx-details").format(txid)
         r = session.get(api_url, *args, **kwargs)
         r.raise_for_status()
         return r.json(parse_float=Decimal)
 
-    def broadcast_tx(self, tx_hex, *args, **kwargs):  # pragma: no cover
+    def broadcast_tx(self, tx_hex: str, *args, **kwargs) -> bool:  # pragma: no cover
         api_url = self.make_endpoint_url("raw-tx")
         r = session.post(api_url, json={"hexes": [tx_hex]}, *args, **kwargs)
         return r.status_code == 200

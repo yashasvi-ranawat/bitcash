@@ -1,11 +1,13 @@
-from collections import namedtuple
+from typing import NamedTuple
 
 FIELD_SIZE = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
 GROUP_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 TONELLI_SHANKS_CONSTANT = (FIELD_SIZE + 1) // 4
 
 
-Point = namedtuple("Point", ("x", "y"))
+class Point(NamedTuple):
+    x: int
+    y: int
 
 
 def parity(num):

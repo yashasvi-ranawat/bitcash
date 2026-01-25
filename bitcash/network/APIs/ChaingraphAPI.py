@@ -1,21 +1,21 @@
+from typing import Any, Optional
 from bitcash.network.http import session
 from bitcash.exceptions import InvalidEndpointURLProvided
 from bitcash.network.APIs import BaseAPI
 from bitcash.network.meta import Unspent
 from bitcash.network.transaction import Transaction, TxPart
 from bitcash.cashaddress import Address
+from bitcash.types import NetworkStr
 
 
 class ChaingraphAPI(BaseAPI):
     """ChaingraphAPI API, chaingraph.cash
 
     :param network_endpoint: The url for the network endpoint
-    :type network_endpoint: ``str``
     :param node_like: node name to match for with "_like" string comparison expression
-    :type node_like: ``str``
     """
 
-    def __init__(self, network_endpoint: str, node_like: str = None):
+    def __init__(self, network_endpoint: str, node_like: Optional[str] = None):
         try:
             assert isinstance(network_endpoint, str)
         except AssertionError:
@@ -43,7 +43,9 @@ class ChaingraphAPI(BaseAPI):
         "regtest": [],
     }
 
-    def send_request(self, json_request, *args, **kwargs):
+    def send_request(
+        self, json_request: dict[str, Any], *args, **kwargs
+    ) -> dict[str, Any]:
         """Send json request and return receiving json"""
         r = session.post(self.network_endpoint, json=json_request, *args, **kwargs)
         r.raise_for_status()
@@ -53,10 +55,10 @@ class ChaingraphAPI(BaseAPI):
         return json
 
     @classmethod
-    def get_default_endpoints(cls, network):
+    def get_default_endpoints(cls, network: NetworkStr) -> list[str]:
         return cls.DEFAULT_ENDPOINTS[network]
 
-    def get_blockheight(self, *args, **kwargs):
+    def get_blockheight(self, *args, **kwargs) -> int:
         json_request = {
             "query": """
 query GetBlockheight($node: String!) {
@@ -77,7 +79,7 @@ query GetBlockheight($node: String!) {
         blockheight = int(json["data"]["block"][0]["height"])
         return blockheight
 
-    def get_balance(self, address, *args, **kwargs):
+    def get_balance(self, address: str, *args, **kwargs) -> int:
         json_request = {
             "query": """
 query GetUTXO($lb: _text, $node: String!) {
@@ -114,7 +116,7 @@ query GetUTXO($lb: _text, $node: String!) {
         data = json["data"]["search_output"]
         return sum([int(_["value_satoshis"]) for _ in data])
 
-    def get_transactions(self, address, *args, **kwargs):
+    def get_transactions(self, address: str, *args, **kwargs) -> list[str]:
         json_request = {
             "query": """
 query GetOutputs($lb: _text!, $node: String!) {
@@ -202,7 +204,7 @@ query GetOutputs($lb: _text!, $node: String!) {
         transactions = sorted(set(transactions), key=lambda x: transactions.index(x))
         return transactions
 
-    def get_transaction(self, txid, *args, **kwargs):
+    def get_transaction(self, txid: str, *args, **kwargs) -> Transaction:
         response = self.get_raw_transaction(txid, *args, **kwargs)
 
         block_inclusions = response["block_inclusions"]
@@ -254,7 +256,7 @@ query GetOutputs($lb: _text!, $node: String!) {
 
         return tx
 
-    def get_tx_amount(self, txid, txindex, *args, **kwargs):
+    def get_tx_amount(self, txid: str, txindex: int, *args, **kwargs) -> int:
         json_request = {
             "query": """
 query GetOutput($tx: bytea!, $txind: bigint!, $node: String!) {
@@ -289,7 +291,7 @@ query GetOutput($tx: bytea!, $txind: bigint!, $node: String!) {
             raise RuntimeError(f"Output {txid}:{txindex} does not exist")
         return int(json["data"]["output"][0]["value_satoshis"])
 
-    def get_unspent(self, address, *args, **kwargs):
+    def get_unspent(self, address: str, *args, **kwargs) -> list[Unspent]:
         json_request = {
             "query": """
 query GetUTXO($lb: _text!, $node: String!) {
@@ -380,7 +382,7 @@ query GetUTXO($lb: _text!, $node: String!) {
             )
         return unspents
 
-    def get_raw_transaction(self, txid, *args, **kwargs):
+    def get_raw_transaction(self, txid: str, *args, **kwargs) -> dict[str, Any]:
         json_request = {
             "query": """
 query GetTransactionDetails($tx: bytea!, $node: String!) {
@@ -435,7 +437,7 @@ query GetTransactionDetails($tx: bytea!, $node: String!) {
             raise RuntimeError(f"Transaction {txid} does not exist")
         return json["data"]["transaction"][0]
 
-    def broadcast_tx(self, tx_hex, *args, **kwargs):  # pragma: no cover
+    def broadcast_tx(self, tx_hex: str, *args, **kwargs) -> bool:  # pragma: no cover
         json_request = {
             "query": """
 query GetNodeId($node: String!){

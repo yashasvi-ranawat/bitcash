@@ -4,19 +4,19 @@ from bitcash._ripemd160 import ripemd160
 from coincurve import PrivateKey as ECPrivateKey, PublicKey as ECPublicKey
 
 
-def sha256(bytestr):
+def sha256(bytestr: bytes) -> bytes:
     return _sha256(bytestr).digest()
 
 
-def double_sha256(bytestr):
+def double_sha256(bytestr: bytes) -> bytes:
     return _sha256(_sha256(bytestr).digest()).digest()
 
 
-def double_sha256_checksum(bytestr):
+def double_sha256_checksum(bytestr: bytes) -> bytes:
     return double_sha256(bytestr)[:4]
 
 
-def ripemd160_sha256(bytestr):
+def ripemd160_sha256(bytestr: bytes) -> bytes:
     try:
         return new("ripemd160", sha256(bytestr)).digest()
     except ValueError:

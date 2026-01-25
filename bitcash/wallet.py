@@ -1,36 +1,37 @@
-import json
+from __future__ import annotations
 
-from bitcash.crypto import ECPrivateKey
+import json
+from typing import Literal, Optional, Sequence, Union
+
 from bitcash.cashtoken import Unspents
+from bitcash.crypto import ECPrivateKey
 from bitcash.curve import Point
-from bitcash.exceptions import InvalidNetwork
 from bitcash.format import (
+    address_to_cashtokenaddress,
+    address_to_public_key_hash,
     bytes_to_wif,
     public_key_to_address,
     public_key_to_coords,
     wif_to_bytes,
-    address_to_public_key_hash,
-    address_to_cashtokenaddress,
 )
 from bitcash.network import NetworkAPI, satoshi_to_currency_cached
 from bitcash.network.meta import Unspent
 from bitcash.op import OpCodes
 from bitcash.transaction import calc_txid, create_p2pkh_transaction, sanitize_tx_data
+from bitcash.types import Network, PreparedOutput, TokenData, UserOutput
 
-
-NETWORKS = {"main": "mainnet", "test": "testnet", "regtest": "regtest"}
 DEFAULT_FEE = 1
 
 
-def wif_to_key(wif, regtest=False):
+def wif_to_key(wif: str, regtest: bool = False):
     private_key_bytes, compressed, version = wif_to_bytes(wif, regtest)
 
-    if version == "main":
+    if version == Network.main.name:
         if compressed:
             return PrivateKey.from_bytes(private_key_bytes)
         else:
             return PrivateKey(wif)
-    elif version == "test":
+    elif version == Network.test.name:
         if compressed:
             return PrivateKeyTestnet.from_bytes(private_key_bytes)
         else:
@@ -55,10 +56,12 @@ class BaseKey:
     :raises TypeError: If ``wif`` is not a ``str``.
     """
 
-    def __init__(self, wif=None, regtest=False):
+    def __init__(
+        self, wif: Union[str, ECPrivateKey, None] = None, regtest: bool = False
+    ):
         if wif:
             if isinstance(wif, str):
-                private_key_bytes, compressed, version = wif_to_bytes(wif, regtest)
+                private_key_bytes, compressed, _ = wif_to_bytes(wif, regtest)
                 self._pk = ECPrivateKey(private_key_bytes)
             elif isinstance(wif, ECPrivateKey):
                 self._pk = wif
@@ -73,18 +76,18 @@ class BaseKey:
         self._public_key = self._pk.public_key.format(compressed=compressed)
 
     @property
-    def public_key(self):
+    def public_key(self) -> bytes:
         """The public point serialized to bytes."""
         return self._public_key
 
     @property
-    def public_point(self):
+    def public_point(self) -> Point:
         """The public point (x, y)."""
         if self._public_point is None:
             self._public_point = Point(*public_key_to_coords(self._public_key))
         return self._public_point
 
-    def sign(self, data):
+    def sign(self, data: bytes) -> bytes:
         """Signs some data which can be verified later by others using
         the public key.
 
@@ -95,7 +98,7 @@ class BaseKey:
         """
         return self._pk.sign(data)
 
-    def verify(self, signature, data):
+    def verify(self, signature: bytes, data: bytes) -> bool:
         """Verifies some data was signed by this private key.
 
         :param signature: The signature to verify.
@@ -106,27 +109,27 @@ class BaseKey:
         """
         return self._pk.public_key.verify(signature, data)
 
-    def to_hex(self):
+    def to_hex(self) -> str:
         """:rtype: ``str``"""
         return self._pk.to_hex()
 
-    def to_bytes(self):
+    def to_bytes(self) -> bytes:
         """:rtype: ``bytes``"""
         return self._pk.secret
 
-    def to_der(self):
+    def to_der(self) -> bytes:
         """:rtype: ``bytes``"""
         return self._pk.to_der()
 
-    def to_pem(self):
+    def to_pem(self) -> bytes:
         """:rtype: ``bytes``"""
         return self._pk.to_pem()
 
-    def to_int(self):
+    def to_int(self) -> int:
         """:rtype: ``int``"""
         return self._pk.to_int()
 
-    def is_compressed(self):
+    def is_compressed(self) -> bool:
         """Returns whether or not this private key corresponds to a compressed
         public key.
 
@@ -134,7 +137,7 @@ class BaseKey:
         """
         return True if len(self.public_key) == 33 else False
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         return self.to_int() == other.to_int()
 
 
@@ -149,37 +152,38 @@ class PrivateKey(BaseKey):
     :raises TypeError: If ``wif`` is not a ``str``.
     """
 
-    def __init__(self, wif=None, network="main"):
+    def __init__(
+        self,
+        wif: Union[str, ECPrivateKey, None] = None,
+        network: Union[Literal["main"], Literal["test"], Literal["regtest"]] = "main",
+    ):
         super().__init__(wif=wif)
 
         self._address = None
         self._scriptcode = None
-        if network in NETWORKS.keys():
-            self._network = network
-        else:
-            raise InvalidNetwork
-        self.balance = 0
-        self.cashtoken_balance = {}
-        self.unspents = []
-        self.transactions = []
+        self._network = Network[network]
+        self.balance: int = 0
+        self.cashtoken_balance: dict[str, TokenData] = {}
+        self.unspents: list[Unspent] = []
+        self.transactions: list[str] = []
 
     @property
-    def address(self):
+    def address(self) -> str:
         """The public address you share with others to receive funds."""
         if self._address is None:
             self._address = public_key_to_address(
-                self._public_key, version=self._network
+                self._public_key, version=self._network.name
             )
 
         return self._address
 
     @property
-    def cashtoken_address(self):
+    def cashtoken_address(self) -> str:
         """The public address you share with others to receive cashtokens."""
         return address_to_cashtokenaddress(self.address)
 
     @property
-    def scriptcode(self):
+    def scriptcode(self) -> bytes:
         self._scriptcode = (
             OpCodes.OP_DUP.binary
             + OpCodes.OP_HASH160.binary
@@ -190,12 +194,12 @@ class PrivateKey(BaseKey):
         )
         return self._scriptcode
 
-    def to_wif(self):
+    def to_wif(self) -> str:
         return bytes_to_wif(
-            self._pk.secret, version=self._network, compressed=self.is_compressed()
+            self._pk.secret, version=self._network.name, compressed=self.is_compressed()
         )
 
-    def balance_as(self, currency):
+    def balance_as(self, currency: str) -> str:
         """Returns your balance as a formatted string in a particular currency.
 
         :param currency: One of the :ref:`supported currencies`.
@@ -204,7 +208,7 @@ class PrivateKey(BaseKey):
         """
         return satoshi_to_currency_cached(self.balance, currency)
 
-    def get_balance(self, currency="satoshi"):
+    def get_balance(self, currency: str = "satoshi") -> str:
         """Fetches the current balance by calling
         :func:`~bitcash.PrivateKey.get_balance` and returns it using
         :func:`~bitcash.PrivateKey.balance_as`.
@@ -216,7 +220,7 @@ class PrivateKey(BaseKey):
         _ = self.get_unspents()
         return self.balance_as(currency)
 
-    def get_cashtokenbalance(self):
+    def get_cashtokenbalance(self) -> dict[str, TokenData]:
         """Fetches the current cashtoken balance by calling
         :func:`~bitcash.PrivateKey.get_balance` and returns it as
         a token dictionary.
@@ -226,39 +230,39 @@ class PrivateKey(BaseKey):
         _ = self.get_unspents()
         return self.cashtoken_balance
 
-    def get_unspents(self):
+    def get_unspents(self) -> list[Unspent]:
         """Fetches all available unspent transaction outputs.
 
         :rtype: ``list`` of :class:`~bitcash.network.meta.Unspent`
         """
         self.unspents[:] = NetworkAPI.get_unspent(
-            self.address, network=NETWORKS[self._network]
+            self.address, network=self._network.value
         )
-        _ = Unspents(self.unspents)
-        self.balance = _.amount
-        self.cashtoken_balance = _.tokendata
+        processed_unspents = Unspents(self.unspents)
+        self.balance = processed_unspents.amount
+        self.cashtoken_balance = processed_unspents.tokendata
         return self.unspents
 
-    def get_transactions(self):
+    def get_transactions(self) -> list[str]:
         """Fetches transaction history.
 
         :rtype: ``list`` of ``str`` transaction IDs
         """
         self.transactions[:] = NetworkAPI.get_transactions(
-            self.address, network=NETWORKS[self._network]
+            self.address, network=self._network.value
         )
         return self.transactions
 
     def create_transaction(
         self,
-        outputs,
-        fee=None,
-        leftover=None,
-        combine=True,
-        message=None,
-        unspents=None,
-        custom_pushdata=False,
-    ):  # pragma: no cover
+        outputs: Sequence[UserOutput],
+        fee: Optional[int] = None,
+        leftover: Optional[str] = None,
+        combine: bool = True,
+        message: Union[bytes, str, None] = None,
+        unspents: Optional[list[Unspent]] = None,
+        custom_pushdata: bool = False,
+    ) -> str:  # pragma: no cover
         """Creates a signed P2PKH transaction.
 
         :param outputs: A sequence of outputs you wish to send in the form
@@ -302,7 +306,7 @@ class PrivateKey(BaseKey):
         :rtype: ``str``
         """
 
-        unspents, outputs = sanitize_tx_data(
+        unspents, prepared_outputs = sanitize_tx_data(
             unspents or self.get_unspents(),
             outputs,
             fee or DEFAULT_FEE,
@@ -313,16 +317,16 @@ class PrivateKey(BaseKey):
             custom_pushdata=custom_pushdata,
         )
 
-        return create_p2pkh_transaction(self, unspents, outputs)
+        return create_p2pkh_transaction(self, unspents, prepared_outputs)
 
     def send(
         self,
-        outputs,
-        fee=None,
-        leftover=None,
-        combine=True,
-        message=None,
-        unspents=None,
+        outputs: Sequence[UserOutput],
+        fee: Optional[int] = None,
+        leftover: Optional[str] = None,
+        combine: bool = True,
+        message: Union[bytes, str, None] = None,
+        unspents: Optional[list[Unspent]] = None,
     ):  # pragma: no cover
         """Creates a signed P2PKH transaction and attempts to broadcast it on
         the blockchain. This accepts the same arguments as
@@ -378,21 +382,21 @@ class PrivateKey(BaseKey):
             unspents=unspents,
         )
 
-        NetworkAPI.broadcast_tx(tx_hex, network=NETWORKS[self._network])
+        NetworkAPI.broadcast_tx(tx_hex, network=self._network.value)
 
         return calc_txid(tx_hex)
 
     @classmethod
     def prepare_transaction(
         cls,
-        address,
-        outputs,
-        compressed=True,
-        fee=None,
-        leftover=None,
-        combine=True,
-        message=None,
-        unspents=None,
+        address: str,
+        outputs: Sequence[UserOutput],
+        compressed: bool = True,
+        fee: Optional[int] = None,
+        leftover: Optional[str] = None,
+        combine: bool = True,
+        message: Union[bytes, str, None] = None,
+        unspents: Optional[list[Unspent]] = None,
     ):  # pragma: no cover
         """Prepares a P2PKH transaction for offline signing.
 
@@ -441,7 +445,7 @@ class PrivateKey(BaseKey):
         :returns: JSON storing data required to create an offline transaction.
         :rtype: ``str``
         """
-        unspents, outputs = sanitize_tx_data(
+        unspents, prepared_outputs = sanitize_tx_data(
             unspents or NetworkAPI.get_unspent(address),
             outputs,
             fee or DEFAULT_FEE,
@@ -451,22 +455,17 @@ class PrivateKey(BaseKey):
             compressed=compressed,
         )
 
-        outputs = list(map(list, outputs))
-        for output in outputs:
-            # script
-            output[0] = output[0].hex()
-            # nft_commitment
-            if output[4] is not None:
-                output[4] = output[4].hex()
-
+        serialized_outputs = [
+            list(output.to_serializable()) for output in prepared_outputs
+        ]
         data = {
             "unspents": [unspent.to_dict() for unspent in unspents],
-            "outputs": outputs,
+            "outputs": serialized_outputs,
         }
 
         return json.dumps(data, separators=(",", ":"))
 
-    def sign_transaction(self, tx_data):  # pragma: no cover
+    def sign_transaction(self, tx_data: str) -> str:  # pragma: no cover
         """Creates a signed P2PKH transaction using previously prepared
         transaction data.
 
@@ -478,19 +477,15 @@ class PrivateKey(BaseKey):
         data = json.loads(tx_data)
 
         unspents = [Unspent.from_dict(unspent) for unspent in data["unspents"]]
-        outputs = data["outputs"]
-        for output in outputs:
-            # script
-            output[0] = bytes.fromhex(output[0])
-            # nft_commitment
-            if output[4] is not None:
-                output[4] = bytes.fromhex(output[4])
-        outputs = list(map(tuple, outputs))
+        serialized_outputs = data["outputs"]
+        outputs = [
+            PreparedOutput.from_serializable(output) for output in serialized_outputs
+        ]
 
         return create_p2pkh_transaction(self, unspents, outputs)
 
     @classmethod
-    def from_hex(cls, hexed):
+    def from_hex(cls, hexed: str) -> PrivateKey:
         """
         :param hexed: A private key previously encoded as hex.
         :type hexed: ``str``
@@ -499,7 +494,7 @@ class PrivateKey(BaseKey):
         return PrivateKey(ECPrivateKey.from_hex(hexed))
 
     @classmethod
-    def from_bytes(cls, bytestr):
+    def from_bytes(cls, bytestr: bytes) -> PrivateKey:
         """
         :param bytestr: A private key previously encoded as hex.
         :type bytestr: ``bytes``
@@ -508,7 +503,7 @@ class PrivateKey(BaseKey):
         return PrivateKey(ECPrivateKey(bytestr))
 
     @classmethod
-    def from_der(cls, der):
+    def from_der(cls, der: bytes) -> PrivateKey:
         """
         :param der: A private key previously encoded as DER.
         :type der: ``bytes``
@@ -517,7 +512,7 @@ class PrivateKey(BaseKey):
         return PrivateKey(ECPrivateKey.from_der(der))
 
     @classmethod
-    def from_pem(cls, pem):
+    def from_pem(cls, pem: bytes) -> PrivateKey:
         """
         :param pem: A private key previously encoded as PEM.
         :type pem: ``bytes``
@@ -526,7 +521,7 @@ class PrivateKey(BaseKey):
         return PrivateKey(ECPrivateKey.from_pem(pem))
 
     @classmethod
-    def from_int(cls, num):
+    def from_int(cls, num: int) -> PrivateKey:
         """
         :param num: A private key in raw integer form.
         :type num: ``int``
@@ -534,7 +529,7 @@ class PrivateKey(BaseKey):
         """
         return PrivateKey(ECPrivateKey.from_int(num))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<PrivateKey: {self.address}>"
 
 
@@ -550,11 +545,15 @@ class PrivateKeyTestnet(PrivateKey):
     :raises TypeError: If ``wif`` is not a ``str``.
     """
 
-    def __init__(self, wif=None, network="test"):
+    def __init__(
+        self,
+        wif: Union[str, ECPrivateKey, None] = None,
+        network: Union[Literal["main"], Literal["test"], Literal["regtest"]] = "test",
+    ):
         super().__init__(wif=wif, network=network)
 
     @classmethod
-    def from_hex(cls, hexed):
+    def from_hex(cls, hexed: str) -> PrivateKeyTestnet:
         """
         :param hexed: A private key previously encoded as hex.
         :type hexed: ``str``
@@ -563,7 +562,7 @@ class PrivateKeyTestnet(PrivateKey):
         return PrivateKeyTestnet(ECPrivateKey.from_hex(hexed))
 
     @classmethod
-    def from_bytes(cls, bytestr):
+    def from_bytes(cls, bytestr: bytes) -> PrivateKeyTestnet:
         """
         :param bytestr: A private key previously encoded as hex.
         :type bytestr: ``bytes``
@@ -572,7 +571,7 @@ class PrivateKeyTestnet(PrivateKey):
         return PrivateKeyTestnet(ECPrivateKey(bytestr))
 
     @classmethod
-    def from_der(cls, der):
+    def from_der(cls, der: bytes) -> PrivateKeyTestnet:
         """
         :param der: A private key previously encoded as DER.
         :type der: ``bytes``
@@ -581,7 +580,7 @@ class PrivateKeyTestnet(PrivateKey):
         return PrivateKeyTestnet(ECPrivateKey.from_der(der))
 
     @classmethod
-    def from_pem(cls, pem):
+    def from_pem(cls, pem: bytes) -> PrivateKeyTestnet:
         """
         :param pem: A private key previously encoded as PEM.
         :type pem: ``bytes``
@@ -590,7 +589,7 @@ class PrivateKeyTestnet(PrivateKey):
         return PrivateKeyTestnet(ECPrivateKey.from_pem(pem))
 
     @classmethod
-    def from_int(cls, num):
+    def from_int(cls, num: int) -> PrivateKeyTestnet:
         """
         :param num: A private key in raw integer form.
         :type num: ``int``
@@ -598,7 +597,7 @@ class PrivateKeyTestnet(PrivateKey):
         """
         return PrivateKeyTestnet(ECPrivateKey.from_int(num))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<PrivateKeyTestnet: {self.address}>"
 
 
@@ -614,11 +613,17 @@ class PrivateKeyRegtest(PrivateKey):
     :raises TypeError: If ``wif`` is not a ``str``.
     """
 
-    def __init__(self, wif=None, network="regtest"):
+    def __init__(
+        self,
+        wif: Union[str, ECPrivateKey, None] = None,
+        network: Union[
+            Literal["main"], Literal["test"], Literal["regtest"]
+        ] = "regtest",
+    ):
         super().__init__(wif, network)
 
     @classmethod
-    def from_hex(cls, hexed):
+    def from_hex(cls, hexed: str) -> PrivateKeyRegtest:
         """
         :param hexed: A private key previously encoded as hex.
         :type hexed: ``str``
@@ -627,7 +632,7 @@ class PrivateKeyRegtest(PrivateKey):
         return PrivateKeyRegtest(ECPrivateKey.from_hex(hexed))
 
     @classmethod
-    def from_bytes(cls, bytestr):
+    def from_bytes(cls, bytestr: bytes) -> PrivateKeyRegtest:
         """
         :param bytestr: A private key previously encoded as hex.
         :type bytestr: ``bytes``
@@ -636,7 +641,7 @@ class PrivateKeyRegtest(PrivateKey):
         return PrivateKeyRegtest(ECPrivateKey(bytestr))
 
     @classmethod
-    def from_der(cls, der):
+    def from_der(cls, der: bytes) -> PrivateKeyRegtest:
         """
         :param der: A private key previously encoded as DER.
         :type der: ``bytes``
@@ -645,7 +650,7 @@ class PrivateKeyRegtest(PrivateKey):
         return PrivateKeyRegtest(ECPrivateKey.from_der(der))
 
     @classmethod
-    def from_pem(cls, pem):
+    def from_pem(cls, pem: bytes) -> PrivateKeyRegtest:
         """
         :param pem: A private key previously encoded as PEM.
         :type pem: ``bytes``
@@ -654,7 +659,7 @@ class PrivateKeyRegtest(PrivateKey):
         return PrivateKeyRegtest(ECPrivateKey.from_pem(pem))
 
     @classmethod
-    def from_int(cls, num):
+    def from_int(cls, num: int) -> PrivateKeyRegtest:
         """
         :param num: A private key in raw integer form.
         :type num: ``int``
@@ -662,7 +667,7 @@ class PrivateKeyRegtest(PrivateKey):
         """
         return PrivateKeyRegtest(ECPrivateKey.from_int(num))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<PrivateKeyRegtest: {self.address}>"
 
 

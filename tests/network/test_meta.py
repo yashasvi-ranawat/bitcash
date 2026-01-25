@@ -1,20 +1,21 @@
 from bitcash.network.meta import Unspent
+from bitcash.types import NFTCapability
 
 
 class TestUnspent:
     def test_init(self):
         unspent = Unspent(
-            10000, 7, "script", "txid", 0, "category_id", "none", "nft_commitment", 50
+            10000, 7, "script", "txid", 0, "category_id", "none", b"nft_commitment", 50
         )
         assert unspent.amount == 10000
         assert unspent.confirmations == 7
         assert unspent.script == "script"
         assert unspent.txid == "txid"
         assert unspent.txindex == 0
-        assert unspent.category_id == "category_id"
-        assert unspent.nft_commitment == "nft_commitment"
-        assert unspent.nft_capability == "none"
-        assert unspent.token_amount == 50
+        assert unspent.cashtoken.category_id == "category_id"
+        assert unspent.cashtoken.nft_commitment == b"nft_commitment"
+        assert unspent.cashtoken.nft_capability == NFTCapability.none
+        assert unspent.cashtoken.token_amount == 50
         # CashToken properties
         assert unspent.has_amount is True
         assert unspent.has_nft is True

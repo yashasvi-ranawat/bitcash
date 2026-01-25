@@ -1,16 +1,19 @@
 import logging
-from collections import namedtuple
 from copy import deepcopy
+from typing import Optional, Sequence, Union
 
+from bitcash.cashaddress import Address
+from bitcash.cashtoken import (
+    Unspents,
+    generate_cashtoken_prefix,
+    prepare_output,
+    select_cashtoken_utxo,
+)
 from bitcash.crypto import double_sha256, sha256
 from bitcash.exceptions import InsufficientFunds
-from bitcash.cashtoken import (
-    prepare_output,
-    Unspents,
-    select_cashtoken_utxo,
-    generate_cashtoken_prefix,
-)
+from bitcash.network.meta import Unspent
 from bitcash.op import OpCodes
+from bitcash.types import CashTokens, PreparedOutput, UserOutput
 from bitcash.utils import (
     bytes_to_hex,
     chunk_data,
@@ -38,7 +41,15 @@ MESSAGE_LIMIT = 220
 class TxIn:
     __slots__ = ("script", "script_len", "txid", "txindex", "amount", "token_prefix")
 
-    def __init__(self, script, script_len, txid, txindex, amount, token_prefix=b""):
+    def __init__(
+        self,
+        script: bytes,
+        script_len: bytes,
+        txid: bytes,
+        txindex: bytes,
+        amount: bytes,
+        token_prefix: bytes = b"",
+    ):
         self.script = script
         self.script_len = script_len
         self.txid = txid
@@ -56,10 +67,10 @@ class TxIn:
             and self.token_prefix == other.token_prefix
         )
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         return {attr: getattr(self, attr) for attr in TxIn.__slots__}
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             f"TxIn({repr(self.script)}, "
             f"{repr(self.script_len)}, "
@@ -69,14 +80,13 @@ class TxIn:
         )
 
 
-Output = namedtuple("Output", ("address", "amount", "currency"))
-
-
-def calc_txid(tx_hex):
+def calc_txid(tx_hex: str) -> str:
     return bytes_to_hex(double_sha256(hex_to_bytes(tx_hex))[::-1])
 
 
-def estimate_tx_fee(n_in, output_script_list, satoshis, compressed):
+def estimate_tx_fee(
+    n_in: int, output_script_list: list[bytes], satoshis: int, compressed: bool
+) -> int:
     if not satoshis:
         return 0
 
@@ -99,7 +109,7 @@ def estimate_tx_fee(n_in, output_script_list, satoshis, compressed):
     return estimated_fee
 
 
-def get_op_pushdata_code(dest):
+def get_op_pushdata_code(dest: bytes) -> bytes:
     length_data = len(dest)
     if length_data <= 0x4C:  # (https://en.bitcoin.it/wiki/Script)
         return length_data.to_bytes(1, byteorder="little")
@@ -118,14 +128,14 @@ def get_op_pushdata_code(dest):
 
 
 def sanitize_tx_data(
-    unspents,
-    outputs,
-    fee,
-    leftover,
-    combine=True,
-    message=None,
-    compressed=True,
-    custom_pushdata=False,
+    unspents: list[Unspent],
+    outputs: Sequence[UserOutput],
+    fee: int,
+    leftover: str,
+    combine: bool = True,
+    message: Optional[Union[bytes, str]] = None,
+    compressed: bool = True,
+    custom_pushdata: bool = False,
 ):
     """
     sanitize_tx_data()
@@ -133,30 +143,29 @@ def sanitize_tx_data(
     fee is in satoshis per byte.
     """
     unspents = deepcopy(unspents)
-    outputs = outputs.copy()
+    leftover_address = Address.from_string(leftover)
 
     if not unspents:
         raise ValueError("Transactions must have at least one unspent.")
 
-    for i, output in enumerate(outputs):
-        # (script, satoshi value, category_id, nft_capability, nft_commitment,
-        # token_amount)
-        outputs[i] = prepare_output(output)
+    prepared_outputs: list[PreparedOutput] = [
+        prepare_output(output) for output in outputs
+    ]
 
     # Temporary storage so all outputs precede messages.
-    messages = []
+    message_outputs: list[PreparedOutput] = []
 
-    if message and (custom_pushdata is False):
-        try:
+    if message and custom_pushdata is False:
+        if isinstance(message, str):
             message = message.encode("utf-8")
-        except AttributeError:
-            pass  # assume message is already a bytes-like object
 
         message_chunks = chunk_data(message, MESSAGE_LIMIT)
 
         for message in message_chunks:
             script = OpCodes.OP_RETURN.binary + get_op_pushdata_code(message) + message
-            messages.append((script, 0, None, None, None, None))
+            message_outputs.append(
+                PreparedOutput(script, 0, CashTokens(None, None, None, None))
+            )
 
     elif message and (custom_pushdata is True):
         if len(message) >= 220:
@@ -164,21 +173,23 @@ def sanitize_tx_data(
             raise ValueError("Currently cannot exceed 220 bytes with custom_pushdata.")
         else:
             # manual control over number of bytes in each batch of pushdata
-            if type(message) != bytes:
+            if not isinstance(message, bytes):
                 raise TypeError("custom pushdata must be of type: bytes")
             else:
                 script = OpCodes.OP_RETURN.binary + message
-            messages.append((script, 0, None, None, None, None))
+            message_outputs.append(
+                PreparedOutput(script, 0, CashTokens(None, None, None, None))
+            )
 
     # counting outs, will adjust fee estimate
-    output_script_list = [_[0] for _ in outputs]
-    output_script_list += [_[0] for _ in messages]
+    output_script_list = [_[0] for _ in prepared_outputs]
+    output_script_list += [_[0] for _ in message_outputs]
 
     if combine:
         cashtoken = Unspents(unspents)
-        for output in outputs:
+        for output in prepared_outputs:
             cashtoken.subtract_output(output)
-        leftover_outputs, leftover_amount = cashtoken.get_outputs(leftover)
+        leftover_outputs, leftover_amount = cashtoken.get_outputs(leftover_address)
         output_script_list += [_[0] for _ in leftover_outputs]
         # calculated_fee is in total satoshis.
         calculated_fee = estimate_tx_fee(
@@ -190,14 +201,16 @@ def sanitize_tx_data(
         if calculated_fee > leftover_amount:
             raise InsufficientFunds("leftover balance cannot cover fee")
         if calculated_fee:
-            last_out = list(leftover_outputs[-1])
-            last_out[1] -= calculated_fee
-            leftover_outputs[-1] = tuple(last_out)
+            leftover_outputs[-1] = PreparedOutput(
+                leftover_outputs[-1].scriptcode,
+                leftover_outputs[-1].amount - calculated_fee,
+                leftover_outputs[-1].cashtokens,
+            )
 
-        outputs += leftover_outputs
+        prepared_outputs += leftover_outputs
 
     else:
-        unspents, unspents_used = select_cashtoken_utxo(unspents, outputs)
+        unspents, unspents_used = select_cashtoken_utxo(unspents, prepared_outputs)
 
         error = None
         # the first unspent is added regardless because of how selection is,
@@ -210,9 +223,11 @@ def sanitize_tx_data(
             cashtoken.add_unspent(unspent)
             test_token = deepcopy(cashtoken)
             try:
-                for output in outputs:
+                for output in prepared_outputs:
                     test_token.subtract_output(output)
-                (leftover_outputs, leftover_amount) = test_token.get_outputs(leftover)
+                (leftover_outputs, leftover_amount) = test_token.get_outputs(
+                    leftover_address
+                )
             except InsufficientFunds as err:
                 error = err
                 continue
@@ -231,23 +246,25 @@ def sanitize_tx_data(
             raise InsufficientFunds(error or f"{cashtoken.amount} is insufficient")
 
         if calculated_fee:
-            last_out = list(leftover_outputs[-1])
-            last_out[1] -= calculated_fee
-            leftover_outputs[-1] = tuple(last_out)
+            leftover_outputs[-1] = PreparedOutput(
+                leftover_outputs[-1].scriptcode,
+                leftover_outputs[-1].amount - calculated_fee,
+                leftover_outputs[-1].cashtokens,
+            )
 
         unspents[:] = unspents_used + unspents[: index + 1]
-        outputs += leftover_outputs
+        prepared_outputs += leftover_outputs
 
-    outputs.extend(messages)
+    prepared_outputs.extend(message_outputs)
 
-    return unspents, outputs
+    return unspents, prepared_outputs
 
 
-def construct_output_block(outputs):
+def construct_output_block(outputs: Sequence[PreparedOutput]) -> bytes:
     output_block = b""
 
     for data in outputs:
-        script, amount, _, _, _, _ = data
+        script, amount, _ = data
 
         output_block += amount.to_bytes(8, byteorder="little")
 
@@ -261,7 +278,7 @@ def construct_output_block(outputs):
     return output_block
 
 
-def construct_input_block(inputs):
+def construct_input_block(inputs: list[TxIn]) -> bytes:
     input_block = b""
     sequence = SEQUENCE
 
@@ -273,7 +290,9 @@ def construct_input_block(inputs):
     return input_block
 
 
-def create_p2pkh_transaction(private_key, unspents, outputs):
+def create_p2pkh_transaction(
+    private_key, unspents: list[Unspent], outputs: Sequence[PreparedOutput]
+) -> str:
     public_key = private_key.public_key
     public_key_len = len(public_key).to_bytes(1, byteorder="little")
 
@@ -287,17 +306,12 @@ def create_p2pkh_transaction(private_key, unspents, outputs):
     output_block = construct_output_block(outputs)
 
     # Optimize for speed, not memory, by pre-computing values.
-    inputs = []
+    inputs: list[TxIn] = []
     for unspent in unspents:
         script = hex_to_bytes(unspent.script)
         script_len = int_to_varint(len(script))
         # get cashtoken prefix
-        token_prefix = generate_cashtoken_prefix(
-            unspent.category_id,
-            unspent.nft_capability,
-            unspent.nft_commitment,
-            unspent.token_amount,
-        )
+        token_prefix = generate_cashtoken_prefix(unspent.cashtoken)
         txid = hex_to_bytes(unspent.txid)[::-1]
         txindex = unspent.txindex.to_bytes(4, byteorder="little")
         amount = unspent.amount.to_bytes(8, byteorder="little")
@@ -305,7 +319,7 @@ def create_p2pkh_transaction(private_key, unspents, outputs):
         inputs.append(TxIn(script, script_len, txid, txindex, amount, token_prefix))
 
     hashPrevouts = double_sha256(b"".join([i.txid + i.txindex for i in inputs]))
-    hashSequence = double_sha256(b"".join([SEQUENCE for i in inputs]))
+    hashSequence = double_sha256(b"".join([SEQUENCE for _ in inputs]))
     hashOutputs = double_sha256(output_block)
 
     # scriptCode_len is part of the script.

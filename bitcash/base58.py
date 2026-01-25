@@ -8,7 +8,7 @@ BASE58_ALPHABET_LIST = list(BASE58_ALPHABET)
 BASE58_ALPHABET_INDEX = {char: index for index, char in enumerate(BASE58_ALPHABET)}
 
 
-def b58encode(bytestr):
+def b58encode(bytestr: bytes) -> str:
     alphabet = BASE58_ALPHABET_LIST
 
     encoded = deque()
@@ -33,23 +33,23 @@ def b58encode(bytestr):
     return "1" * pad + encoded
 
 
-def b58encode_check(bytestr):
+def b58encode_check(bytestr: bytes) -> str:
     return b58encode(bytestr + double_sha256_checksum(bytestr))
 
 
-def b58decode(string):
+def b58decode(string: str) -> bytes:
     alphabet_index = BASE58_ALPHABET_INDEX
 
     num = 0
 
-    try:
-        for char in string:
+    for char in string:
+        try:
             num *= 58
             num += alphabet_index[char]
-    except KeyError:
-        raise ValueError(
-            f'"{char}" is an invalid base58 encoded ' "character."
-        ) from None
+        except KeyError:
+            raise ValueError(
+                f'"{char}" is an invalid base58 encoded character.'
+            ) from None
 
     bytestr = int_to_unknown_bytes(num)
 
@@ -63,7 +63,7 @@ def b58decode(string):
     return b"\x00" * pad + bytestr
 
 
-def b58decode_check(string):
+def b58decode_check(string: str) -> bytes:
     decoded = b58decode(string)
     shortened = decoded[:-4]
     decoded_checksum = decoded[-4:]

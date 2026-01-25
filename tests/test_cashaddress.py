@@ -1,3 +1,5 @@
+import typing
+
 import pytest
 
 from bitcash.cashaddress import (
@@ -9,31 +11,31 @@ from bitcash.cashaddress import (
 from bitcash.exceptions import InvalidAddress
 
 from .samples import (
-    PUBKEY_HASH,
-    PUBKEY_HASH_COMPRESSED,
     BITCOIN_ADDRESS,
     BITCOIN_ADDRESS_COMPRESSED,
-    BITCOIN_ADDRESS_TEST,
-    BITCOIN_ADDRESS_TEST_COMPRESSED,
     BITCOIN_ADDRESS_REGTEST,
     BITCOIN_ADDRESS_REGTEST_COMPRESSED,
+    BITCOIN_ADDRESS_TEST,
+    BITCOIN_ADDRESS_TEST_COMPRESSED,
     BITCOIN_CASHADDRESS,
+    BITCOIN_CASHADDRESS_CATKN,
     BITCOIN_CASHADDRESS_COMPRESSED,
-    BITCOIN_CASHADDRESS_TEST,
-    BITCOIN_CASHADDRESS_TEST_COMPRESSED,
+    BITCOIN_CASHADDRESS_PAY2SH20,
+    BITCOIN_CASHADDRESS_PAY2SH32,
     BITCOIN_CASHADDRESS_REGTEST,
     BITCOIN_CASHADDRESS_REGTEST_COMPRESSED,
+    BITCOIN_CASHADDRESS_TEST,
+    BITCOIN_CASHADDRESS_TEST_COMPRESSED,
     CONVERT_BITS_INVALID_DATA_PAYLOAD,
     CONVERT_BITS_NO_PAD_PAYLOAD,
     CONVERT_BITS_NO_PAD_RETURN,
-    BITCOIN_CASHADDRESS_PAY2SH20,
-    BITCOIN_CASHADDRESS_PAY2SH32,
-    BITCOIN_CASHADDRESS_CATKN,
     PREFIX_AMOUNT,
     PREFIX_CAPABILITY,
     PREFIX_CAPABILITY_AMOUNT,
     PREFIX_CAPABILITY_COMMITMENT,
     PREFIX_CAPABILITY_COMMITMENT_AMOUNT,
+    PUBKEY_HASH,
+    PUBKEY_HASH_COMPRESSED,
 )
 
 
@@ -91,14 +93,10 @@ class TestAddress:
 
     def test_from_string_unexpected(self):
         # Test unexpected values
-        with pytest.raises(InvalidAddress):
-            Address.from_string(42)
-        with pytest.raises(InvalidAddress):
-            Address.from_string(0.999)
-        with pytest.raises(InvalidAddress):
-            Address.from_string(True)
-        with pytest.raises(InvalidAddress):
-            Address.from_string(False)
+        test_values = typing.cast(list[str], [42, 0.999, True, False, BadStr()])
+        for value in test_values:
+            with pytest.raises(InvalidAddress):
+                Address.from_string(value)
         with pytest.raises(InvalidAddress):
             Address.from_string(
                 "bitcoincash:qzFyVx77v2pmgc0vulwlfkl3Uzjgh5gnMqk5hhyaa6"
@@ -110,7 +108,7 @@ class TestAddress:
         with pytest.raises(InvalidAddress):
             Address.from_string("Hello world!")
         with pytest.raises(InvalidAddress, match="Expected string as input"):
-            Address.from_string(BadStr())
+            Address.from_string(typing.cast(str, BadStr()))
         with pytest.raises(InvalidAddress):
             Address.from_string("bchreg::1234")
         with pytest.raises(InvalidAddress, match="Could not determine address version"):
@@ -230,7 +228,7 @@ class TestAddress:
         assert address == BITCOIN_CASHADDRESS
         assert address == address
         with pytest.raises(ValueError):
-            address == 1
+            assert address == 1
 
     def test_to_from_script(self):
         address = Address.from_string(BITCOIN_CASHADDRESS)
@@ -265,16 +263,19 @@ def test_parse_cashaddress():
     address, params = parse_cashaddress(
         BITCOIN_CASHADDRESS + "?amount=0.1337&label=Satoshi"
     )
+    assert address is not None
     assert address.cash_address() == BITCOIN_CASHADDRESS
     assert params == {"amount": "0.1337", "label": "Satoshi"}
 
     address, params = parse_cashaddress(
         BITCOIN_CASHADDRESS + "?amount=0.1337&label=Satoshi%20a&label=Satoshi%20b"
     )
+    assert address is not None
     assert address.cash_address() == BITCOIN_CASHADDRESS
     assert params == {"amount": "0.1337", "label": ["Satoshi a", "Satoshi b"]}
 
     address, params = parse_cashaddress(BITCOIN_CASHADDRESS + "")
+    assert address is not None
     assert address.cash_address() == BITCOIN_CASHADDRESS
     assert params == {}
 

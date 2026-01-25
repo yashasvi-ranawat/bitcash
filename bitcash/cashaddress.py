@@ -1,12 +1,17 @@
+from __future__ import annotations
+
 import io
+from typing import Any, Optional
+
 from bitcash.exceptions import InvalidAddress
 from bitcash.op import OpCodes
+from bitcash.types import CashAddressVersion, Network
 from bitcash.utils import varint_to_int
 
 CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
 
 
-def polymod(values):
+def polymod(values: list[int]) -> int:
     chk = 1
     generator = [
         (0x01, 0x98F2BC8E61),
@@ -24,36 +29,38 @@ def polymod(values):
     return chk ^ 1
 
 
-def calculate_checksum(prefix, payload):
+def calculate_checksum(prefix: str, payload: list[int]) -> list[int]:
     poly = polymod(prefix_expand(prefix) + payload + [0, 0, 0, 0, 0, 0, 0, 0])
-    out = list()
+    out: list[int] = list()
     for i in range(8):
         out.append((poly >> 5 * (7 - i)) & 0x1F)
     return out
 
 
-def verify_checksum(prefix, payload):
+def verify_checksum(prefix: str, payload: list[int]) -> bool:
     return polymod(prefix_expand(prefix) + payload) == 0
 
 
-def b32decode(inputs):
-    out = list()
+def b32decode(inputs: str) -> list[int]:
+    out: list[int] = []
     for letter in inputs:
         out.append(CHARSET.find(letter))
     return out
 
 
-def b32encode(inputs):
+def b32encode(inputs: list[int]) -> str:
     out = ""
     for char_code in inputs:
         out += CHARSET[char_code]
     return out
 
 
-def convertbits(data, frombits, tobits, pad=True):
+def convertbits(
+    data: list[int], frombits: int, tobits: int, pad: bool = True
+) -> Optional[list[int]]:
     acc = 0
     bits = 0
-    ret = []
+    ret: list[int] = []
     maxv = (1 << tobits) - 1
     max_acc = (1 << (frombits + tobits - 1)) - 1
     for value in data:
@@ -72,7 +79,7 @@ def convertbits(data, frombits, tobits, pad=True):
     return ret
 
 
-def prefix_expand(prefix):
+def prefix_expand(prefix: str) -> list[int]:
     return [ord(x) & 0x1F for x in prefix] + [0]
 
 
@@ -81,75 +88,37 @@ class Address:
     Class to handle CashAddr.
 
     :param version: Version of CashAddr
-    :type version: ``str``
     :param payload: Payload of CashAddr as int list of the bytearray
-    :type payload: ``list`` of ``int``
     """
 
-    VERSIONS = {
-        "P2SH20": {"prefix": "bitcoincash", "version_bit": 8, "network": "mainnet"},
-        "P2SH32": {"prefix": "bitcoincash", "version_bit": 11, "network": "mainnet"},
-        "P2PKH": {"prefix": "bitcoincash", "version_bit": 0, "network": "mainnet"},
-        "P2SH20-TESTNET": {"prefix": "bchtest", "version_bit": 8, "network": "testnet"},
-        "P2SH32-TESTNET": {
-            "prefix": "bchtest",
-            "version_bit": 11,
-            "network": "testnet",
-        },
-        "P2PKH-TESTNET": {"prefix": "bchtest", "version_bit": 0, "network": "testnet"},
-        "P2SH20-REGTEST": {"prefix": "bchreg", "version_bit": 8, "network": "regtest"},
-        "P2SH32-REGTEST": {"prefix": "bchreg", "version_bit": 11, "network": "regtest"},
-        "P2PKH-REGTEST": {"prefix": "bchreg", "version_bit": 0, "network": "regtest"},
-        "P2SH20-CATKN": {
-            "prefix": "bitcoincash",
-            "version_bit": 24,
-            "network": "mainnet",
-        },
-        "P2SH32-CATKN": {
-            "prefix": "bitcoincash",
-            "version_bit": 27,
-            "network": "mainnet",
-        },
-        "P2PKH-CATKN": {
-            "prefix": "bitcoincash",
-            "version_bit": 16,
-            "network": "mainnet",
-        },
-        "P2SH20-CATKN-TESTNET": {
-            "prefix": "bchtest",
-            "version_bit": 24,
-            "network": "testnet",
-        },
-        "P2SH32-CATKN-TESTNET": {
-            "prefix": "bchtest",
-            "version_bit": 27,
-            "network": "testnet",
-        },
-        "P2PKH-CATKN-TESTNET": {
-            "prefix": "bchtest",
-            "version_bit": 16,
-            "network": "testnet",
-        },
-        "P2SH20-CATKN-REGTEST": {
-            "prefix": "bchreg",
-            "version_bit": 24,
-            "network": "regtest",
-        },
-        "P2SH32-CATKN-REGTEST": {
-            "prefix": "bchreg",
-            "version_bit": 27,
-            "network": "regtest",
-        },
-        "P2PKH-CATKN-REGTEST": {
-            "prefix": "bchreg",
-            "version_bit": 16,
-            "network": "regtest",
-        },
+    VERSIONS: dict[str, CashAddressVersion] = {
+        "P2SH20": CashAddressVersion("bitcoincash", 8, Network.main),
+        "P2SH32": CashAddressVersion("bitcoincash", 11, Network.main),
+        "P2PKH": CashAddressVersion("bitcoincash", 0, Network.main),
+        "P2SH20-TESTNET": CashAddressVersion("bchtest", 8, Network.test),
+        "P2SH32-TESTNET": CashAddressVersion("bchtest", 11, Network.test),
+        "P2PKH-TESTNET": CashAddressVersion("bchtest", 0, Network.test),
+        "P2SH20-REGTEST": CashAddressVersion("bchreg", 8, Network.regtest),
+        "P2SH32-REGTEST": CashAddressVersion("bchreg", 11, Network.regtest),
+        "P2PKH-REGTEST": CashAddressVersion("bchreg", 0, Network.regtest),
+        "P2SH20-CATKN": CashAddressVersion("bitcoincash", 24, Network.main),
+        "P2SH32-CATKN": CashAddressVersion("bitcoincash", 27, Network.main),
+        "P2PKH-CATKN": CashAddressVersion("bitcoincash", 16, Network.main),
+        "P2SH20-CATKN-TESTNET": CashAddressVersion("bchtest", 24, Network.test),
+        "P2SH32-CATKN-TESTNET": CashAddressVersion("bchtest", 27, Network.test),
+        "P2PKH-CATKN-TESTNET": CashAddressVersion("bchtest", 16, Network.test),
+        "P2SH20-CATKN-REGTEST": CashAddressVersion("bchreg", 24, Network.regtest),
+        "P2SH32-CATKN-REGTEST": CashAddressVersion("bchreg", 27, Network.regtest),
+        "P2PKH-CATKN-REGTEST": CashAddressVersion("bchreg", 16, Network.regtest),
     }
 
-    VERSION_SUFFIXES = {"bitcoincash": "", "bchtest": "-TESTNET", "bchreg": "-REGTEST"}
+    VERSION_SUFFIXES: dict[str, str] = {
+        "bitcoincash": "",
+        "bchtest": "-TESTNET",
+        "bchreg": "-REGTEST",
+    }
 
-    ADDRESS_TYPES = {
+    ADDRESS_TYPES: dict[int, str] = {
         0: "P2PKH",
         8: "P2SH20",
         11: "P2SH32",
@@ -158,13 +127,13 @@ class Address:
         27: "P2SH32-CATKN",
     }
 
-    def __init__(self, version, payload):
+    def __init__(self, version: str, payload: list[int]):
         if version not in Address.VERSIONS:
             raise ValueError("Invalid address version provided")
 
         self.version = version
         self.payload = payload
-        self.prefix = Address.VERSIONS[self.version]["prefix"]
+        self.prefix = Address.VERSIONS[self.version].prefix
 
     def __str__(self):
         return (
@@ -174,35 +143,31 @@ class Address:
     def __repr__(self):
         return f"Address('{self.cash_address()}')"
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, str):
             return self.cash_address() == other
         elif isinstance(other, Address):
             return self.cash_address() == other.cash_address()
         else:
             raise ValueError(
-                "Address can be compared to a string address"
-                " or an instance of Address"
+                "Address can be compared to a string address or an instance of Address"
             )
 
-    def cash_address(self):
+    def cash_address(self) -> str:
         """
         Generate CashAddr of the Address
-
-        :rtype: ``str``
         """
-        version_bit = Address.VERSIONS[self.version]["version_bit"]
+        version_bit = Address.VERSIONS[self.version].version_bit
         payload = [version_bit] + self.payload
         payload = convertbits(payload, 8, 5)
+        assert payload is not None, "Error converting payload"
         checksum = calculate_checksum(self.prefix, payload)
         return self.prefix + ":" + b32encode(payload + checksum)
 
     @property
-    def scriptcode(self):
+    def scriptcode(self) -> bytes:
         """
         Generate the locking script of the Address
-
-        :rtype: ``bytes``
         """
         if "P2PKH" in self.version:
             return (
@@ -227,14 +192,14 @@ class Address:
                 + bytes(self.payload)
                 + OpCodes.OP_EQUAL.binary
             )
+        raise ValueError("Locking script not implemented for this address type")
 
     @classmethod
-    def from_script(cls, scriptcode):
+    def from_script(cls, scriptcode: bytes) -> Address:
         """
         Generate Address from a locking script
 
         :param scriptcode: The locking script
-        :type scriptcode: ``bytes``
         :returns: Instance of :class:~bitcash.cashaddress.Address
         """
         # cashtoken suffix
@@ -282,13 +247,12 @@ class Address:
                 return cls("P2SH32" + catkn, list(scriptcode[2:34]))
         raise ValueError("Unknown script")
 
-    @staticmethod
-    def from_string(address):
+    @classmethod
+    def from_string(cls, address: str) -> Address:
         """
         Generate Address from a cashadress string
 
         :param scriptcode: The cashaddress string
-        :type scriptcode: ``str``
         :returns: Instance of :class:~bitcash.cashaddress.Address
         """
         try:
@@ -318,23 +282,22 @@ class Address:
         converted = convertbits(decoded, 5, 8)
 
         try:
-            version = Address.ADDRESS_TYPES[converted[0]]
-        except Exception:
-            raise InvalidAddress("Could not determine address version")
+            assert converted is not None, "Error converting payload bits"
+            version = cls.ADDRESS_TYPES[converted[0]]
+        except (KeyError, AssertionError) as e:
+            raise InvalidAddress(f"Could not determine address version: {e}")
 
-        version += Address.VERSION_SUFFIXES[prefix]
+        version += cls.VERSION_SUFFIXES[prefix]
 
         payload = converted[1:-6]
-        return Address(version, payload)
+        return cls(version, payload)
 
 
-def parse_cashaddress(data):
+def parse_cashaddress(data: str) -> tuple[Optional[Address], dict[str, Any]]:
     """Parse CashAddress address URI, with params attached
 
     :param data: Cashaddress uri to be parsed
-    :type data: `str`
     :returns: cashaddress address, and parameters
-    :rtype: (`str`, `dict`)
 
     >>> parse_cashaddress(
             'bchtest:qzvsaasdvw6mt9j2rs3gyps673gj86flev3z0s40ln?'
@@ -355,9 +318,9 @@ def parse_cashaddress(data):
      }
     )
     """
-    import urllib
+    from urllib import parse
 
-    uri = urllib.parse.urlparse(data)
+    uri = parse.urlparse(data)
     if uri.scheme not in Address.VERSION_SUFFIXES:
         raise InvalidAddress("Invalid address scheme")
 
@@ -365,7 +328,7 @@ def parse_cashaddress(data):
         address = None
     else:
         address = Address.from_string(f"{uri.scheme}:{uri.path}")
-    query = urllib.parse.parse_qs(uri.query)
+    query: dict[str, Any] = parse.parse_qs(uri.query)
 
     for key, values in query.items():
         if len(values) == 1:
@@ -374,15 +337,12 @@ def parse_cashaddress(data):
     return address, query
 
 
-def generate_cashaddress(address, params=None):
+def generate_cashaddress(address: str, params: Optional[dict[str, Any]] = None) -> str:
     """Generates cashaddress uri from address and params
 
     :param address: cashaddress
-    :type address: `str`
     :param params: dictionary of parameters to be attached
-    :type params: `dict`
     :returns: cashaddress uri
-    :rtype: str
 
     >>> generate_cashaddress(
             "bitcoincash:qzfyvx77v2pmgc0vulwlfkl3uzjgh5gnmqk5hhyaa6",
@@ -397,9 +357,9 @@ def generate_cashaddress(address, params=None):
     )
     "bitcoincash:?message=Satoshi%20Nakamoto"
     """
-    import urllib
+    from urllib import parse
 
-    uri = urllib.parse.urlparse(address)
+    uri = parse.urlparse(address)
     if uri.path != "":
         # testing address
         _ = Address.from_string(f"{uri.scheme}:{uri.path}")
@@ -409,14 +369,14 @@ def generate_cashaddress(address, params=None):
     if params is None:
         return uri.geturl()
 
-    param_list = []
+    param_list: list[tuple[str, Any]] = []
     for key, values in params.items():
         if isinstance(values, str) or not hasattr(values, "__iter__"):
             values = [values]
         for value in values:
             param_list.append((key, value))
 
-    query = urllib.parse.urlencode(param_list)
+    query = parse.urlencode(param_list)
     uri = uri._replace(query=query)
 
     return uri.geturl()

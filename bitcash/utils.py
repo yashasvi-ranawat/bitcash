@@ -1,7 +1,9 @@
 import decimal
 import functools
+from io import BytesIO
 import time
 from binascii import hexlify
+from typing import Generator, Literal, Union
 
 
 class Decimal(decimal.Decimal):
@@ -9,41 +11,43 @@ class Decimal(decimal.Decimal):
         return super().__new__(cls, str(value))
 
 
-def chunk_data(data, size):
+def chunk_data(data: bytes, size: int) -> Generator[bytes, None, None]:
     return (data[i : i + size] for i in range(0, len(data), size))
 
 
-def int_to_unknown_bytes(num, byteorder="big"):
+def int_to_unknown_bytes(
+    num: int, byteorder: Union[Literal["big"], Literal["little"]] = "big"
+) -> bytes:
     """Converts an int to the least number of bytes as possible."""
     return num.to_bytes((num.bit_length() + 7) // 8 or 1, byteorder)
 
 
-def bytes_to_hex(bytestr, upper=False):
+def bytes_to_hex(bytestr: bytes, upper: bool = False) -> str:
     hexed = hexlify(bytestr).decode()
     return hexed.upper() if upper else hexed
 
 
-def hex_to_bytes(hexed):
+def hex_to_bytes(hexed: str) -> bytes:
     if len(hexed) & 1:
         hexed = "0" + hexed
 
     return bytes.fromhex(hexed)
 
 
-def int_to_hex(num, upper=False):
+def int_to_hex(num: int, upper: bool = False) -> str:
     hexed = hex(num)[2:]
     return hexed.upper() if upper else hexed
 
 
-def hex_to_int(hexed):
+def hex_to_int(hexed: str) -> int:
     return int(hexed, 16)
 
 
-def flip_hex_byte_order(string):
+def flip_hex_byte_order(string: str) -> str:
     return bytes_to_hex(hex_to_bytes(string)[::-1])
 
 
-def int_to_varint(val):
+def int_to_varint(val: int) -> bytes:
     if val < 253:
         return val.to_bytes(1, "little")
     elif val <= 65535:
@@ -54,12 +58,11 @@ def int_to_varint(val):
         return b"\xff" + val.to_bytes(8, "little")
 
 
-def varint_to_int(val):
+def varint_to_int(val: BytesIO) -> int:
     """
     Converts varint to int from incoming bytestream.
 
     :param val: the bytecode starting with varint
-    :type val: ``io.BytesIO``
     :returns: ``int``
     """
     start_byte = val.read(1)
