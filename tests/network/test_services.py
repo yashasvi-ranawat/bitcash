@@ -234,10 +234,10 @@ class TestBitcoinDotComAPI:
         os.environ["CHAINGRAPH_API_MAINNET"] = "%mainnet"
         endpoints = get_endpoints_for("mainnet")
         assert len(endpoints) == 5
-        assert isinstance(endpoints[0], ChaingraphAPI)  # default
-        assert isinstance(endpoints[1], ChaingraphAPI)  # default
-        assert isinstance(endpoints[2], FulcrumProtocolAPI)  # default
-        assert isinstance(endpoints[3], FulcrumProtocolAPI)  # default
+        assert isinstance(endpoints[0], FulcrumProtocolAPI)  # default
+        assert isinstance(endpoints[1], FulcrumProtocolAPI)  # default
+        assert isinstance(endpoints[2], ChaingraphAPI)  # default
+        assert isinstance(endpoints[3], ChaingraphAPI)  # default
         assert isinstance(endpoints[4], BitcoinDotComAPI)  # env
 
     def test_get_single_endpoint_for_env_variable_fulcrum(self, reset_environ):
@@ -245,9 +245,9 @@ class TestBitcoinDotComAPI:
         os.environ["CHAINGRAPH_API_MAINNET"] = "%mainnet"
         endpoints = get_endpoints_for("mainnet")
         assert len(endpoints) == 4
-        assert isinstance(endpoints[0], ChaingraphAPI)  # default
+        assert isinstance(endpoints[0], FulcrumProtocolAPI)  # env
         assert isinstance(endpoints[1], ChaingraphAPI)  # default
-        assert isinstance(endpoints[2], FulcrumProtocolAPI)  # env
+        assert isinstance(endpoints[2], ChaingraphAPI)  # default
         assert isinstance(endpoints[3], BitcoinDotComAPI)  # default
 
     def test_get_single_endpoint_for_env_variable_chaingraph(self, reset_environ):
@@ -255,21 +255,21 @@ class TestBitcoinDotComAPI:
         os.environ["CHAINGRAPH_API_MAINNET"] = "%mainnet"
         endpoints = get_endpoints_for("mainnet")
         assert len(endpoints) == 4
-        assert isinstance(endpoints[0], ChaingraphAPI)  # env
+        assert isinstance(endpoints[0], FulcrumProtocolAPI)  # default
         assert isinstance(endpoints[1], FulcrumProtocolAPI)  # default
-        assert isinstance(endpoints[2], FulcrumProtocolAPI)  # default
+        assert isinstance(endpoints[2], ChaingraphAPI)  # env
         assert isinstance(endpoints[3], BitcoinDotComAPI)  # default
-        assert endpoints[0].node_like == "%mainnet"
+        assert endpoints[2].node_like == "%mainnet"
 
     def test_get_multiple_endpoint_for_env_variable_bitcoincom(self, reset_environ):
         os.environ["BITCOINCOM_API_MAINNET_1"] = VALID_BITCOINCOM_ENDPOINT_URLS[0]
         os.environ["BITCOINCOM_API_MAINNET_2"] = VALID_BITCOINCOM_ENDPOINT_URLS[1]
         endpoints = get_endpoints_for("mainnet")
         assert len(endpoints) == 6
-        assert isinstance(endpoints[0], ChaingraphAPI)  # default
-        assert isinstance(endpoints[1], ChaingraphAPI)  # default
-        assert isinstance(endpoints[2], FulcrumProtocolAPI)  # default
-        assert isinstance(endpoints[3], FulcrumProtocolAPI)  # default
+        assert isinstance(endpoints[0], FulcrumProtocolAPI)  # default
+        assert isinstance(endpoints[1], FulcrumProtocolAPI)  # default
+        assert isinstance(endpoints[2], ChaingraphAPI)  # default
+        assert isinstance(endpoints[3], ChaingraphAPI)  # default
         assert isinstance(endpoints[4], BitcoinDotComAPI)  # env
         assert isinstance(endpoints[5], BitcoinDotComAPI)  # env
 
@@ -277,9 +277,9 @@ class TestBitcoinDotComAPI:
         os.environ["FULCRUM_API_MAINNET_1"] = VALID_FULCRUM_ENDPOINT_URLS[0]
         endpoints = get_endpoints_for("mainnet")
         assert len(endpoints) == 4
-        assert isinstance(endpoints[0], ChaingraphAPI)  # default
+        assert isinstance(endpoints[0], FulcrumProtocolAPI)  # env
         assert isinstance(endpoints[1], ChaingraphAPI)  # default
-        assert isinstance(endpoints[2], FulcrumProtocolAPI)  # env
+        assert isinstance(endpoints[2], ChaingraphAPI)  # default
         assert isinstance(endpoints[3], BitcoinDotComAPI)  # default
 
     def test_get_multiple_endpoint_for_env_variable_chaingraph(self, reset_environ):
@@ -288,13 +288,13 @@ class TestBitcoinDotComAPI:
         os.environ["CHAINGRAPH_API_MAINNET_2"] = "%mainnet"
         endpoints = get_endpoints_for("mainnet")
         assert len(endpoints) == 5
-        assert isinstance(endpoints[0], ChaingraphAPI)  # default
-        assert isinstance(endpoints[1], ChaingraphAPI)  # default
-        assert isinstance(endpoints[2], FulcrumProtocolAPI)  # default
-        assert isinstance(endpoints[3], FulcrumProtocolAPI)  # default
+        assert isinstance(endpoints[0], FulcrumProtocolAPI)  # default
+        assert isinstance(endpoints[1], FulcrumProtocolAPI)  # default
+        assert isinstance(endpoints[2], ChaingraphAPI)  # default
+        assert isinstance(endpoints[3], ChaingraphAPI)  # default
         assert isinstance(endpoints[4], BitcoinDotComAPI)  # env
-        assert endpoints[0].node_like == "%"
-        assert endpoints[1].node_like == "%mainnet"
+        assert endpoints[2].node_like == "%"
+        assert endpoints[3].node_like == "%mainnet"
 
     def test_get_balance_mainnet_return_type(self):
         time.sleep(1)
