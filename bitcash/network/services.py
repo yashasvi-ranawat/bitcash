@@ -20,8 +20,8 @@ from bitcash.utils import time_cache
 
 # Dictionary of supported endpoint APIs
 ENDPOINT_ENV_VARIABLES = {
-    "CHAINGRAPH": ChaingraphAPI,
     "FULCRUM": FulcrumProtocolAPI,
+    "CHAINGRAPH": ChaingraphAPI,
     "BITCOINCOM": BitcoinDotComAPI,
 }
 
