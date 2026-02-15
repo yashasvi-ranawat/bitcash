@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any, Callable
 from bitcash.network.http import session
 from decimal import Decimal

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any, Callable, Optional
 from bitcash.network.http import session
 from bitcash.exceptions import InvalidEndpointURLProvided
