@@ -303,7 +303,7 @@ class FulcrumProtocolAPI(BaseAPI):
         return True
 
     def subscribe_address(
-        self, address: str, callback: Callable[[str, str], None], *args, **kwargs
+        self, address: str, callback: Callable[[str, str | None], None], *args, **kwargs
     ) -> SubscriptionHandle:
         """
         Subscribe to an address and receive real-time notifications.

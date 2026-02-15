@@ -485,8 +485,8 @@ class PrivateKey(BaseKey):
 
         return create_p2pkh_transaction(self, unspents, outputs)
 
-    def subsribe(
-        self, callback: Callable[[str, str], None], update_self: bool = False
+    def subscribe(
+        self, callback: Callable[[str, str | None], None], update_self: bool = False
     ) -> SubscriptionHandle:
         """
         Subscribe to this private key's address and receive real-time notifications.
@@ -496,6 +496,7 @@ class PrivateKey(BaseKey):
             transactions on update.
 
         Reserved status_hash values:
+            - None: Address has no history.
             - "error: <message>": An error occurred.
             - "unsubscribed": Subscription has been cancelled.
 
@@ -504,9 +505,10 @@ class PrivateKey(BaseKey):
         """
         if update_self:
 
-            def self_updating_callback(address: str, status_hash: str):
-                if not (
-                    status_hash.startswith("error:") or status_hash == "unsubscribed"
+            def self_updating_callback(address: str, status_hash: str | None):
+                if status_hash is None or (
+                    not status_hash.startswith("error:")
+                    and status_hash != "unsubscribed"
                 ):
                     self.get_unspents()
                     self.get_transactions()

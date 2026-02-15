@@ -477,7 +477,7 @@ mutation BroadcastTx($tx_hex: String!, $node: bigint!){
         return False
 
     def subscribe_address(
-        self, address: str, callback: Callable[[str, str], None], *args, **kwargs
+        self, address: str, callback: Callable[[str, str | None], None], *args, **kwargs
     ) -> SubscriptionHandle:
         raise NotImplementedError(
             "ChaingraphAPI does not support address subscriptions at this time."

@@ -100,12 +100,13 @@ class BaseAPI(ABC):
 
     @abstractmethod
     def subscribe_address(
-        self, address: str, callback: Callable[[str, str], None], *args, **kwargs
+        self, address: str, callback: Callable[[str, str | None], None], *args, **kwargs
     ) -> SubscriptionHandle:
         """
         Subscribe to an address and receive real-time notifications.
         :param address: Address to subscribe to.
         :param callback: Function to call with (address, status_hash) on update.
+            status_hash is None if the address has no history.
         :return: A SubscriptionHandle object for managing the subscription.
         """
 

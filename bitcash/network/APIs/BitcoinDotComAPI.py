@@ -249,7 +249,7 @@ class BitcoinDotComAPI(BaseAPI):
         return r.status_code == 200
 
     def subscribe_address(
-        self, address: str, callback: Callable[[str, str], None], *args, **kwargs
+        self, address: str, callback: Callable[[str, str | None], None], *args, **kwargs
     ) -> SubscriptionHandle:
         raise NotImplementedError(
             "BitcoinDotComAPI does not support address subscriptions at this time."

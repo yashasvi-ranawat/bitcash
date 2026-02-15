@@ -355,7 +355,7 @@ class NetworkAPI:
     def subscribe_address(
         cls,
         address: str,
-        callback: Callable[[str, str], None],
+        callback: Callable[[str, str | None], None],
         network: NetworkStr = "mainnet",
     ) -> SubscriptionHandle:
         """Subscribes an address for push notifications.

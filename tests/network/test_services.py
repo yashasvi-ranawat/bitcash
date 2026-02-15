@@ -2,11 +2,13 @@ import os
 import time
 from typing import Literal
 import typing
+from unittest.mock import MagicMock, patch
 
 import pytest
 import bitcash
 from bitcash.exceptions import InvalidEndpointURLProvided
 from bitcash.network import services as _services
+from bitcash.network.APIs import SubscriptionHandle
 from bitcash.network.APIs.FulcrumProtocolAPI import FulcrumProtocolAPI
 from bitcash.network.meta import Unspent
 from bitcash.network.services import (
@@ -478,3 +480,55 @@ class TestBitcoinDotComAPI:
         for endpoint in endpoints:
             this_endpoint = BitcoinDotComAPI(endpoint)
             assert this_endpoint.get_raw_transaction(TEST_TX)["txid"] == TEST_TX
+
+
+class TestNetworkAPISubscription:
+    @patch("bitcash.network.services.get_sanitized_endpoints_for")
+    def test_subscribe_address_returns_handle(self, mock_get_endpoints):
+        """Test that subscribe_address returns a SubscriptionHandle."""
+        mock_endpoint = MagicMock()
+        mock_handle = SubscriptionHandle(lambda: None)
+        mock_endpoint.subscribe_address.return_value = mock_handle
+        mock_get_endpoints.return_value = (mock_endpoint,)
+
+        callback = MagicMock()
+        handle = NetworkAPI.subscribe_address(MAIN_ADDRESS_USED1, callback)
+
+        assert handle is mock_handle
+        mock_endpoint.subscribe_address.assert_called_once()
+
+    @patch("bitcash.network.services.get_sanitized_endpoints_for")
+    def test_subscribe_address_tries_next_endpoint_on_error(self, mock_get_endpoints):
+        """Test that subscribe_address tries next endpoint on NotImplementedError."""
+        mock_endpoint1 = MagicMock()
+        mock_endpoint1.subscribe_address.side_effect = NotImplementedError()
+
+        mock_endpoint2 = MagicMock()
+        mock_handle = SubscriptionHandle(lambda: None)
+        mock_endpoint2.subscribe_address.return_value = mock_handle
+
+        mock_get_endpoints.return_value = (mock_endpoint1, mock_endpoint2)
+
+        callback = MagicMock()
+        handle = NetworkAPI.subscribe_address(MAIN_ADDRESS_USED1, callback)
+
+        assert handle is mock_handle
+        mock_endpoint1.subscribe_address.assert_called_once()
+        mock_endpoint2.subscribe_address.assert_called_once()
+
+    @patch("bitcash.network.services.get_sanitized_endpoints_for")
+    def test_subscribe_address_raises_connection_error_when_all_fail(
+        self, mock_get_endpoints
+    ):
+        """Test that subscribe_address raises ConnectionError when all endpoints fail."""
+        mock_endpoint1 = MagicMock()
+        mock_endpoint1.subscribe_address.side_effect = NotImplementedError()
+
+        mock_endpoint2 = MagicMock()
+        mock_endpoint2.subscribe_address.side_effect = NotImplementedError()
+
+        mock_get_endpoints.return_value = (mock_endpoint1, mock_endpoint2)
+
+        callback = MagicMock()
+        with pytest.raises(ConnectionError):
+            NetworkAPI.subscribe_address(MAIN_ADDRESS_USED1, callback)
