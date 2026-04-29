@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Developer Interface - BitCash 1.1.2 documentation</title>
+      <title>Developer Interface - BitCash 1.2.0 documentation</title>
     <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="prev" title="Authors" href="../community/authors.html" />
 
   <script>
@@ -235,6 +235,7 @@
 <li><a class="reference internal" href="#bitcash.network.NetworkAPI.IGNORED_ERRORS"><code class="docutils literal notranslate"><span class="pre">NetworkAPI.IGNORED_ERRORS</span></code></a></li>
 <li><a class="reference internal" href="#bitcash.network.NetworkAPI.broadcast_tx"><code class="docutils literal notranslate"><span class="pre">NetworkAPI.broadcast_tx()</span></code></a></li>
 <li><a class="reference internal" href="#bitcash.network.NetworkAPI.get_balance"><code class="docutils literal notranslate"><span class="pre">NetworkAPI.get_balance()</span></code></a></li>
+<li><a class="reference internal" href="#bitcash.network.NetworkAPI.get_cashtoken_addresses"><code class="docutils literal notranslate"><span class="pre">NetworkAPI.get_cashtoken_addresses()</span></code></a></li>
 <li><a class="reference internal" href="#bitcash.network.NetworkAPI.get_raw_transaction"><code class="docutils literal notranslate"><span class="pre">NetworkAPI.get_raw_transaction()</span></code></a></li>
 <li><a class="reference internal" href="#bitcash.network.NetworkAPI.get_transaction"><code class="docutils literal notranslate"><span class="pre">NetworkAPI.get_transaction()</span></code></a></li>
 <li><a class="reference internal" href="#bitcash.network.NetworkAPI.get_transactions"><code class="docutils literal notranslate"><span class="pre">NetworkAPI.get_transactions()</span></code></a></li>
@@ -1552,11 +1553,15 @@ the public key.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="bitcash.cashaddress.Address.from_script">
-<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_script</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scriptcode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bytes</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#bitcash.cashaddress.Address" title="bitcash.cashaddress.Address"><span class="pre">Address</span></a></span></span><a class="headerlink" href="#bitcash.cashaddress.Address.from_script" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_script</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scriptcode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bytes</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">network</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Network</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">Network.main</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#bitcash.cashaddress.Address" title="bitcash.cashaddress.Address"><span class="pre">Address</span></a></span></span><a class="headerlink" href="#bitcash.cashaddress.Address.from_script" title="Link to this definition">¶</a></dt>
 <dd><p>Generate Address from a locking script</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>scriptcode</strong> – The locking script</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>scriptcode</strong> – The locking script</p></li>
+<li><p><strong>network</strong> – Network — <code class="xref py py-attr docutils literal notranslate"><span class="pre">main</span></code>,
+<code class="xref py py-attr docutils literal notranslate"><span class="pre">test</span></code>, or <code class="xref py py-attr docutils literal notranslate"><span class="pre">regtest</span></code></p></li>
+</ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>Instance of :class:~bitcash.cashaddress.Address</p>
@@ -1704,7 +1709,7 @@ the public key.</p>
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">bitcash.network.</span></span><span class="sig-name descname"><span class="pre">NetworkAPI</span></span><a class="headerlink" href="#bitcash.network.NetworkAPI" title="Link to this definition">¶</a></dt>
 <dd><dl class="py attribute">
 <dt class="sig sig-object py" id="bitcash.network.NetworkAPI.IGNORED_ERRORS">
-<span class="sig-name descname"><span class="pre">IGNORED_ERRORS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(&lt;class</span> <span class="pre">'NotImplementedError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'requests.exceptions.RequestException'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'requests.exceptions.HTTPError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'requests.exceptions.ConnectionError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'requests.exceptions.ProxyError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'requests.exceptions.SSLError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'requests.exceptions.Timeout'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'requests.exceptions.ConnectTimeout'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'requests.exceptions.ReadTimeout'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'requests.exceptions.TooManyRedirects'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'requests.exceptions.ChunkedEncodingError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'requests.exceptions.ContentDecodingError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'requests.exceptions.StreamConsumedError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'ssl.SSLError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'ssl.SSLZeroReturnError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'ssl.SSLWantReadError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'ssl.SSLWantWriteError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'ssl.SSLSyscallError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'ssl.SSLEOFError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'OSError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'TimeoutError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'ConnectionResetError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'ConnectionAbortedError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'BrokenPipeError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'OSError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'TimeoutError'&gt;)</span></em><a class="headerlink" href="#bitcash.network.NetworkAPI.IGNORED_ERRORS" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">IGNORED_ERRORS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">(&lt;class</span> <span class="pre">'NotImplementedError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'bitcash.exceptions.InvalidEndpointResponse'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'requests.exceptions.RequestException'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'requests.exceptions.HTTPError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'requests.exceptions.ConnectionError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'requests.exceptions.ProxyError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'requests.exceptions.SSLError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'requests.exceptions.Timeout'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'requests.exceptions.ConnectTimeout'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'requests.exceptions.ReadTimeout'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'requests.exceptions.TooManyRedirects'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'requests.exceptions.ChunkedEncodingError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'requests.exceptions.ContentDecodingError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'requests.exceptions.StreamConsumedError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'ssl.SSLError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'ssl.SSLZeroReturnError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'ssl.SSLWantReadError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'ssl.SSLWantWriteError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'ssl.SSLSyscallError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'ssl.SSLEOFError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'OSError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'TimeoutError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'ConnectionResetError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'ConnectionAbortedError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'BrokenPipeError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'OSError'&gt;,</span> <span class="pre">&lt;class</span> <span class="pre">'TimeoutError'&gt;)</span></em><a class="headerlink" href="#bitcash.network.NetworkAPI.IGNORED_ERRORS" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -1742,6 +1747,32 @@ the public key.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="bitcash.network.NetworkAPI.get_cashtoken_addresses">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_cashtoken_addresses</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">category_id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">network</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'mainnet'</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'testnet'</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'regtest'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'mainnet'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nft_capability</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">NFTCapability</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nft_commitment</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bytes</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">has_token</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">set</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#bitcash.network.NetworkAPI.get_cashtoken_addresses" title="Link to this definition">¶</a></dt>
+<dd><p>Gets all addresses holding unspent outputs of a given cashtoken category.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>category_id</strong> – The token category ID (hex string).</p></li>
+<li><p><strong>network</strong> – The network to query.</p></li>
+<li><p><strong>nft_capability</strong> – If set, only return addresses holding an NFT with this capability
+(one of <code class="xref py py-attr docutils literal notranslate"><span class="pre">none</span></code>,
+<code class="xref py py-attr docutils literal notranslate"><span class="pre">mutable</span></code>,
+<code class="xref py py-attr docutils literal notranslate"><span class="pre">minting</span></code>).</p></li>
+<li><p><strong>nft_commitment</strong> – If set, only return addresses holding an NFT with this commitment.</p></li>
+<li><p><strong>has_token</strong> – If True, only return addresses holding fungible tokens of this category.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A set of addresses holding the cashtoken.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ConnectionError</strong> – If all API services fail.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="bitcash.network.NetworkAPI.get_raw_transaction">
 <em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_raw_transaction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">txid</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">network</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'mainnet'</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'testnet'</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'regtest'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'mainnet'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#bitcash.network.NetworkAPI.get_raw_transaction" title="Link to this definition">¶</a></dt>
 <dd><p>Gets the raw, unparsed transaction details.</p>
@@ -1753,7 +1784,11 @@ the public key.</p>
 <dd class="field-even"><p>The raw transaction details.</p>
 </dd>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>ConnectionError</strong> – If all API services fail.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ConnectionError</strong> – If all API services fail.</p></li>
+<li><p><strong>DataNotFound</strong> – If the transaction does not exist on any
+endpoint. Not caught by endpoint fallback logic.</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
@@ -1807,7 +1842,11 @@ the public key.</p>
 <dd class="field-even"><p>The amount in satoshi.</p>
 </dd>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>ConnectionError</strong> – If all API services fail.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ConnectionError</strong> – If all API services fail.</p></li>
+<li><p><strong>DataNotFound</strong> – If the transaction or output index does not
+exist on any endpoint. Not caught by endpoint fallback logic.</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
@@ -2539,7 +2578,7 @@ number of satoshi.</p>
     </div>
   </div>
 </footer></div>
-      <script src="../_static/documentation_options.js?v=6f037312"></script>
+      <script src="../_static/documentation_options.js?v=6efca38a"></script>
       <script src="../_static/doctools.js?v=888ff710"></script>
       <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
       <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
